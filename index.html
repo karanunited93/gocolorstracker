@@ -8,55 +8,194 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style> html, body, #root { height: 100%; } body { margin: 0; } </style>
 </head>
 <body>
   <div id="root"></div>
 
-  <script type="text/babel" data-presets="react">
+  <!-- ============================================================= -->
+  <!--  EDIT ONLY THESE TWO LINES: paste your Supabase URL and key   -->
+  <!-- ============================================================= -->
+  <script>
+    window.SUPABASE_URL      = "YOUR-PROJECT-URL";   // e.g. https://abcd1234.supabase.co
+    window.SUPABASE_ANON_KEY = "YOUR-ANON-KEY";      // your publishable / anon key
+  </script>
+
+  <!-- App (pre-compiled, no in-browser build step) -->
+  <script>
 /* ============================================================== */
 /*  CONFIG — paste your Supabase values here (see README)         */
 /* ============================================================== */
-const SUPABASE_URL = "https://zzbykakjodudsemnppte.supabase.co"
-const SUPABASE_ANON_KEY = sb_publishable__2RXB0Ox7oTEZg6UWvq-dA_ktS9XdC5
-
+const SUPABASE_URL = window.SUPABASE_URL || "YOUR-PROJECT-URL";
+const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "YOUR-ANON-KEY";
 const CONFIGURED = !/YOUR-/.test(SUPABASE_URL) && !/YOUR-/.test(SUPABASE_ANON_KEY);
-const db = CONFIGURED ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
-
-const { useState, useEffect, useRef } = React;
+let db = null;
+if (CONFIGURED) {
+  try {
+    db = window.supabase && window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch (e) {
+    console.error("Supabase init failed", e);
+  }
+}
+const REMOTE = CONFIGURED && !!db;
+const {
+  useState,
+  useEffect,
+  useRef
+} = React;
 
 /* ============================================================== */
 /*  Brand                                                         */
 /* ============================================================== */
 const LOGO = "data:image/png;base64,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";
-
-const STATUSES = [
-  { id: "not_started", label: "Not started", badge: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-400" },
-  { id: "in_progress", label: "In progress", badge: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-500" },
-  { id: "in_review",   label: "In review",   badge: "bg-amber-50 text-amber-800 border-amber-200", dot: "bg-amber-500" },
-  { id: "live",        label: "Live",         badge: "bg-green-50 text-green-700 border-green-200", dot: "bg-green-500" },
-  { id: "done",        label: "Done",         badge: "bg-slate-800 text-white border-slate-800", dot: "bg-slate-900" },
-  { id: "on_hold",     label: "On hold",      badge: "bg-rose-50 text-rose-700 border-rose-200", dot: "bg-rose-500" },
-];
-const statusMeta = (id) => STATUSES.find((s) => s.id === id) || STATUSES[0];
-const uid = () => (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : "id-" + Date.now() + "-" + Math.floor(Math.random() * 1e6);
+const STATUSES = [{
+  id: "not_started",
+  label: "Not started",
+  badge: "bg-slate-100 text-slate-600 border-slate-200",
+  dot: "bg-slate-400"
+}, {
+  id: "in_progress",
+  label: "In progress",
+  badge: "bg-blue-50 text-blue-700 border-blue-200",
+  dot: "bg-blue-500"
+}, {
+  id: "in_review",
+  label: "In review",
+  badge: "bg-amber-50 text-amber-800 border-amber-200",
+  dot: "bg-amber-500"
+}, {
+  id: "live",
+  label: "Live",
+  badge: "bg-green-50 text-green-700 border-green-200",
+  dot: "bg-green-500"
+}, {
+  id: "done",
+  label: "Done",
+  badge: "bg-slate-800 text-white border-slate-800",
+  dot: "bg-slate-900"
+}, {
+  id: "on_hold",
+  label: "On hold",
+  badge: "bg-rose-50 text-rose-700 border-rose-200",
+  dot: "bg-rose-500"
+}];
+const statusMeta = id => STATUSES.find(s => s.id === id) || STATUSES[0];
+const uid = () => window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : "id-" + Date.now() + "-" + Math.floor(Math.random() * 1e6);
 
 /* ============================================================== */
 /*  Icons (inline)                                                */
 /* ============================================================== */
-const isz = (s) => ({ width: s || 16, height: s || 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" });
-const Plus = ({ size }) => <svg {...isz(size)}><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
-const ChevronDown = ({ size, className }) => <svg {...isz(size)} className={className}><path d="M6 9l6 6 6-6"/></svg>;
-const ChevronRight = ({ size }) => <svg {...isz(size)}><path d="M9 6l6 6-6 6"/></svg>;
-const RefreshCw = ({ size, className }) => <svg {...isz(size)} className={className}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>;
-const Trash2 = ({ size }) => <svg {...isz(size)}><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>;
-const ExternalLink = ({ size }) => <svg {...isz(size)}><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>;
-const MessageSquare = ({ size }) => <svg {...isz(size)}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
-const Send = ({ size }) => <svg {...isz(size)}><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>;
-const CircleUser = ({ size }) => <svg {...isz(size)}><circle cx="12" cy="12" r="10"/><path d="M18 20a6 6 0 0 0-12 0"/><circle cx="12" cy="10" r="4"/></svg>;
-const Check = ({ size }) => <svg {...isz(size)}><path d="M20 6 9 17l-5-5"/></svg>;
-const Users = ({ size }) => <svg {...isz(size)}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+const isz = s => ({
+  width: s || 16,
+  height: s || 16,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 2,
+  strokeLinecap: "round",
+  strokeLinejoin: "round"
+});
+const Plus = ({
+  size
+}) => /*#__PURE__*/React.createElement("svg", isz(size), /*#__PURE__*/React.createElement("path", {
+  d: "M5 12h14"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M12 5v14"
+}));
+const ChevronDown = ({
+  size,
+  className
+}) => /*#__PURE__*/React.createElement("svg", {
+  ...isz(size),
+  className: className
+}, /*#__PURE__*/React.createElement("path", {
+  d: "M6 9l6 6 6-6"
+}));
+const ChevronRight = ({
+  size
+}) => /*#__PURE__*/React.createElement("svg", isz(size), /*#__PURE__*/React.createElement("path", {
+  d: "M9 6l6 6-6 6"
+}));
+const RefreshCw = ({
+  size,
+  className
+}) => /*#__PURE__*/React.createElement("svg", {
+  ...isz(size),
+  className: className
+}, /*#__PURE__*/React.createElement("path", {
+  d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M21 3v5h-5"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M8 16H3v5"
+}));
+const Trash2 = ({
+  size
+}) => /*#__PURE__*/React.createElement("svg", isz(size), /*#__PURE__*/React.createElement("path", {
+  d: "M3 6h18"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M10 11v6"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M14 11v6"
+}));
+const ExternalLink = ({
+  size
+}) => /*#__PURE__*/React.createElement("svg", isz(size), /*#__PURE__*/React.createElement("path", {
+  d: "M15 3h6v6"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M10 14 21 3"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+}));
+const MessageSquare = ({
+  size
+}) => /*#__PURE__*/React.createElement("svg", isz(size), /*#__PURE__*/React.createElement("path", {
+  d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+}));
+const Send = ({
+  size
+}) => /*#__PURE__*/React.createElement("svg", isz(size), /*#__PURE__*/React.createElement("path", {
+  d: "M22 2 11 13"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M22 2l-7 20-4-9-9-4z"
+}));
+const CircleUser = ({
+  size
+}) => /*#__PURE__*/React.createElement("svg", isz(size), /*#__PURE__*/React.createElement("circle", {
+  cx: "12",
+  cy: "12",
+  r: "10"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M18 20a6 6 0 0 0-12 0"
+}), /*#__PURE__*/React.createElement("circle", {
+  cx: "12",
+  cy: "10",
+  r: "4"
+}));
+const Check = ({
+  size
+}) => /*#__PURE__*/React.createElement("svg", isz(size), /*#__PURE__*/React.createElement("path", {
+  d: "M20 6 9 17l-5-5"
+}));
+const Users = ({
+  size
+}) => /*#__PURE__*/React.createElement("svg", isz(size), /*#__PURE__*/React.createElement("path", {
+  d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
+}), /*#__PURE__*/React.createElement("circle", {
+  cx: "9",
+  cy: "7",
+  r: "4"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M22 21v-2a4 4 0 0 0-3-3.87"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M16 3.13a4 4 0 0 1 0 7.75"
+}));
 
 /* ============================================================== */
 /*  Storage engine — Supabase key/value (or localStorage locally) */
@@ -64,49 +203,112 @@ const Users = ({ size }) => <svg {...isz(size)}><path d="M16 21v-2a4 4 0 0 0-4-4
 /* ============================================================== */
 const IDX_KEY = "gc:index";
 const PULSE_KEY = "gc:pulse";
-const campKey = (id) => "gc:camp:" + id;
-const LS = (k) => "gckv:" + k;
-
+const campKey = id => "gc:camp:" + id;
+const LS = k => "gckv:" + k;
 async function sGet(key) {
-  if (!CONFIGURED) { const raw = localStorage.getItem(LS(key)); return raw ? JSON.parse(raw) : null; }
-  const { data, error } = await db.from("kv").select("v").eq("k", key).maybeSingle();
-  if (error) { console.error("get", key, error); return null; }
+  if (!REMOTE) {
+    const raw = localStorage.getItem(LS(key));
+    return raw ? JSON.parse(raw) : null;
+  }
+  const {
+    data,
+    error
+  } = await db.from("kv").select("v").eq("k", key).maybeSingle();
+  if (error) {
+    console.error("get", key, error);
+    return null;
+  }
   return data ? data.v : null;
 }
 async function sSet(key, val) {
-  if (!CONFIGURED) { localStorage.setItem(LS(key), JSON.stringify(val)); return true; }
-  const { error } = await db.from("kv").upsert({ k: key, v: val, updated_at: new Date().toISOString() });
-  if (error) { console.error("set", key, error); return false; }
+  if (!REMOTE) {
+    localStorage.setItem(LS(key), JSON.stringify(val));
+    return true;
+  }
+  const {
+    error
+  } = await db.from("kv").upsert({
+    k: key,
+    v: val,
+    updated_at: new Date().toISOString()
+  });
+  if (error) {
+    console.error("set", key, error);
+    return false;
+  }
   return true;
 }
 async function sDel(key) {
-  if (!CONFIGURED) { localStorage.removeItem(LS(key)); return; }
+  if (!REMOTE) {
+    localStorage.removeItem(LS(key));
+    return;
+  }
   await db.from("kv").delete().eq("k", key);
 }
-const readMe = () => { try { return JSON.parse(localStorage.getItem("gc-tracker-me")); } catch { return null; } };
-const writeMe = (me) => localStorage.setItem("gc-tracker-me", JSON.stringify(me));
-
+const readMe = () => {
+  try {
+    return JSON.parse(localStorage.getItem("gc-tracker-me"));
+  } catch {
+    return null;
+  }
+};
+const writeMe = me => localStorage.setItem("gc-tracker-me", JSON.stringify(me));
 const readIndex = () => sGet(IDX_KEY);
-const readCamp = (id) => sGet(campKey(id));
+const readCamp = id => sGet(campKey(id));
 const readPulse = () => sGet(PULSE_KEY);
-
 const blankCampaign = (name, by) => ({
-  id: uid(), name, status: "not_started", owner: "", dueDate: "",
-  briefLink: "", notes: "", extra: "", comments: [], updatedAt: Date.now(), updatedBy: by || "Setup",
+  id: uid(),
+  name,
+  status: "not_started",
+  owner: "",
+  dueDate: "",
+  briefLink: "",
+  notes: "",
+  extra: "",
+  comments: [],
+  updatedAt: Date.now(),
+  updatedBy: by || "Setup"
 });
-
 function seedWorkstreams(by) {
-  const mk = (name, extra = {}) => ({ ...blankCampaign(name, by), ...extra });
-  return [
-    { id: uid(), name: "BAU performance marketing", camps: [mk("Always-on performance (BAU)", { status: "in_progress", notes: "Ongoing performance marketing campaigns across channels." })] },
-    { id: uid(), name: "MICA campaign", camps: [mk("MICA campaign", { status: "in_progress" })] },
-    { id: uid(), name: "Business creators — influencer brief", camps: [mk("Business creators influencer brief", { notes: "Influencer brief for business creators to talk about Go Colors." })] },
-    { id: uid(), name: "Cloud Soft Pants launch", camps: [mk("Cloud Soft Pants — launch")] },
-    { id: uid(), name: "Barrel Pants launch", camps: [mk("Barrel Pants — launch")] },
-    { id: uid(), name: "Diwali", camps: [mk("Diwali — performance + influencer", { notes: "Diwali brief covering performance marketing and (possibly) influencer marketing." })] },
-  ];
+  const mk = (name, extra = {}) => ({
+    ...blankCampaign(name, by),
+    ...extra
+  });
+  return [{
+    id: uid(),
+    name: "BAU performance marketing",
+    camps: [mk("Always-on performance (BAU)", {
+      status: "in_progress",
+      notes: "Ongoing performance marketing campaigns across channels."
+    })]
+  }, {
+    id: uid(),
+    name: "MICA campaign",
+    camps: [mk("MICA campaign", {
+      status: "in_progress"
+    })]
+  }, {
+    id: uid(),
+    name: "Business creators — influencer brief",
+    camps: [mk("Business creators influencer brief", {
+      notes: "Influencer brief for business creators to talk about Go Colors."
+    })]
+  }, {
+    id: uid(),
+    name: "Cloud Soft Pants launch",
+    camps: [mk("Cloud Soft Pants — launch")]
+  }, {
+    id: uid(),
+    name: "Barrel Pants launch",
+    camps: [mk("Barrel Pants — launch")]
+  }, {
+    id: uid(),
+    name: "Diwali",
+    camps: [mk("Diwali — performance + influencer", {
+      notes: "Diwali brief covering performance marketing and (possibly) influencer marketing."
+    })]
+  }];
 }
-
 async function ensureData() {
   let idx = await readIndex();
   if (idx) return idx;
@@ -114,22 +316,43 @@ async function ensureData() {
   const workstreams = [];
   for (const w of source) {
     const ids = [];
-    for (const c of w.camps) { await sSet(campKey(c.id), c); ids.push(c.id); }
-    workstreams.push({ id: w.id, name: w.name, campaignIds: ids });
+    for (const c of w.camps) {
+      await sSet(campKey(c.id), c);
+      ids.push(c.id);
+    }
+    workstreams.push({
+      id: w.id,
+      name: w.name,
+      campaignIds: ids
+    });
   }
-  idx = { workstreams, updatedAt: Date.now(), updatedBy: "Setup" };
+  idx = {
+    workstreams,
+    updatedAt: Date.now(),
+    updatedBy: "Setup"
+  };
   await sSet(IDX_KEY, idx);
-  await sSet(PULSE_KEY, { at: Date.now(), by: "Setup" });
+  await sSet(PULSE_KEY, {
+    at: Date.now(),
+    by: "Setup"
+  });
   return idx;
 }
-
 async function assemble() {
   const idx = await ensureData();
-  const ids = idx.workstreams.flatMap((w) => w.campaignIds);
+  const ids = idx.workstreams.flatMap(w => w.campaignIds);
   const camps = await Promise.all(ids.map(readCamp));
   const map = {};
-  ids.forEach((id, i) => { if (camps[i]) map[id] = camps[i]; });
-  return { workstreams: idx.workstreams.map((w) => ({ id: w.id, name: w.name, campaigns: w.campaignIds.map((id) => map[id]).filter(Boolean) })) };
+  ids.forEach((id, i) => {
+    if (camps[i]) map[id] = camps[i];
+  });
+  return {
+    workstreams: idx.workstreams.map(w => ({
+      id: w.id,
+      name: w.name,
+      campaigns: w.campaignIds.map(id => map[id]).filter(Boolean)
+    }))
+  };
 }
 
 /* ============================================================== */
@@ -138,196 +361,393 @@ async function assemble() {
 function relTime(ts) {
   const s = Math.floor((Date.now() - ts) / 1000);
   if (s < 60) return "just now";
-  const m = Math.floor(s / 60); if (m < 60) return m + "m ago";
-  const h = Math.floor(m / 60); if (h < 24) return h + "h ago";
-  const d = Math.floor(h / 24); if (d < 7) return d + "d ago";
+  const m = Math.floor(s / 60);
+  if (m < 60) return m + "m ago";
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + "h ago";
+  const d = Math.floor(h / 24);
+  if (d < 7) return d + "d ago";
   return new Date(ts).toLocaleDateString();
 }
-
-function TeamTag({ team }) {
+function TeamTag({
+  team
+}) {
   if (!team) return null;
-  return <span className={"text-[10px] px-1.5 py-0.5 rounded font-medium " + (team === "Wirality" ? "bg-slate-900 text-white" : "bg-white text-slate-900 border border-slate-300")}>{team}</span>;
+  return /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] px-1.5 py-0.5 rounded font-medium " + (team === "Wirality" ? "bg-slate-900 text-white" : "bg-white text-slate-900 border border-slate-300")
+  }, team);
 }
-
-function Editable({ value, onChange, placeholder, className, multiline }) {
+function Editable({
+  value,
+  onChange,
+  placeholder,
+  className,
+  multiline
+}) {
   const [local, setLocal] = useState(value || "");
   const focused = useRef(false);
-  useEffect(() => { if (!focused.current) setLocal(value || ""); }, [value]);
-  const commit = () => { focused.current = false; if (local !== (value || "")) onChange(local); };
-  const props = {
-    value: local, placeholder,
-    onFocus: () => { focused.current = true; },
-    onChange: (e) => setLocal(e.target.value),
-    onBlur: commit,
-    className: "w-full bg-transparent rounded px-2 py-1 border border-transparent hover:border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none transition-colors " + (className || ""),
+  useEffect(() => {
+    if (!focused.current) setLocal(value || "");
+  }, [value]);
+  const commit = () => {
+    focused.current = false;
+    if (local !== (value || "")) onChange(local);
   };
-  return multiline ? <textarea rows={2} {...props} className={props.className + " resize-y leading-relaxed"} /> : <input type="text" {...props} />;
+  const props = {
+    value: local,
+    placeholder,
+    onFocus: () => {
+      focused.current = true;
+    },
+    onChange: e => setLocal(e.target.value),
+    onBlur: commit,
+    className: "w-full bg-transparent rounded px-2 py-1 border border-transparent hover:border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none transition-colors " + (className || "")
+  };
+  return multiline ? /*#__PURE__*/React.createElement("textarea", {
+    rows: 2,
+    ...props,
+    className: props.className + " resize-y leading-relaxed"
+  }) : /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    ...props
+  });
 }
-
-function StatusSelect({ value, onChange }) {
+function StatusSelect({
+  value,
+  onChange
+}) {
   const sm = statusMeta(value);
-  return (
-    <div className="relative w-full">
-      <span className={"absolute left-2.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full pointer-events-none " + sm.dot} />
-      <select value={value} onChange={(e) => onChange(e.target.value)} className={"appearance-none cursor-pointer w-full text-xs font-medium rounded-md border pl-6 pr-6 py-1.5 " + sm.badge}>
-        {STATUSES.map((s) => <option key={s.id} value={s.id} className="bg-white text-slate-800">{s.label}</option>)}
-      </select>
-      <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-60"><ChevronDown size={13} /></span>
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", {
+    className: "relative w-full"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "absolute left-2.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full pointer-events-none " + sm.dot
+  }), /*#__PURE__*/React.createElement("select", {
+    value: value,
+    onChange: e => onChange(e.target.value),
+    className: "appearance-none cursor-pointer w-full text-xs font-medium rounded-md border pl-6 pr-6 py-1.5 " + sm.badge
+  }, STATUSES.map(s => /*#__PURE__*/React.createElement("option", {
+    key: s.id,
+    value: s.id,
+    className: "bg-white text-slate-800"
+  }, s.label))), /*#__PURE__*/React.createElement("span", {
+    className: "absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-60"
+  }, /*#__PURE__*/React.createElement(ChevronDown, {
+    size: 13
+  })));
 }
-
-function CommentThread({ comments, onAdd, me }) {
+function CommentThread({
+  comments,
+  onAdd,
+  me
+}) {
   const [draft, setDraft] = useState("");
-  const submit = () => { const t = draft.trim(); if (!t) return; onAdd(t); setDraft(""); };
-  return (
-    <div className="mt-3 border-t border-slate-100 pt-3">
-      <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 mb-2">
-        <MessageSquare size={13} />{comments.length ? comments.length + " comment" + (comments.length > 1 ? "s" : "") : "Comments"}
-      </div>
-      <div className="space-y-2 mb-2">
-        {comments.map((c) => (
-          <div key={c.id} className="text-sm">
-            <div className="flex items-baseline gap-2">
-              <span className="font-medium text-slate-800">{c.author || "Someone"}</span>
-              <TeamTag team={c.team} />
-              <span className="text-xs text-slate-400">{relTime(c.ts)}</span>
-            </div>
-            <div className="text-slate-600 whitespace-pre-wrap">{c.text}</div>
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center gap-2">
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
-          placeholder={"Comment as " + (me.name || "you") + "…"}
-          className="flex-1 text-sm rounded-lg border border-slate-200 px-3 py-1.5 focus:border-slate-900 focus:outline-none" />
-        <button onClick={submit} className="p-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700" title="Post comment"><Send size={15} /></button>
-      </div>
-    </div>
-  );
+  const submit = () => {
+    const t = draft.trim();
+    if (!t) return;
+    onAdd(t);
+    setDraft("");
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "mt-3 border-t border-slate-100 pt-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1.5 text-xs font-medium text-slate-500 mb-2"
+  }, /*#__PURE__*/React.createElement(MessageSquare, {
+    size: 13
+  }), comments.length ? comments.length + " comment" + (comments.length > 1 ? "s" : "") : "Comments"), /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2 mb-2"
+  }, comments.map(c => /*#__PURE__*/React.createElement("div", {
+    key: c.id,
+    className: "text-sm"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline gap-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "font-medium text-slate-800"
+  }, c.author || "Someone"), /*#__PURE__*/React.createElement(TeamTag, {
+    team: c.team
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs text-slate-400"
+  }, relTime(c.ts))), /*#__PURE__*/React.createElement("div", {
+    className: "text-slate-600 whitespace-pre-wrap"
+  }, c.text)))), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("input", {
+    value: draft,
+    onChange: e => setDraft(e.target.value),
+    onKeyDown: e => {
+      if (e.key === "Enter") submit();
+    },
+    placeholder: "Comment as " + (me.name || "you") + "…",
+    className: "flex-1 text-sm rounded-lg border border-slate-200 px-3 py-1.5 focus:border-slate-900 focus:outline-none"
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: submit,
+    className: "p-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700",
+    title: "Post comment"
+  }, /*#__PURE__*/React.createElement(Send, {
+    size: 15
+  }))));
 }
 
 /* ============================================================== */
 /*  Campaign row                                                  */
 /* ============================================================== */
-function CampaignRow({ c, onField, onAddComment, onDelete, me }) {
+function CampaignRow({
+  c,
+  onField,
+  onAddComment,
+  onDelete,
+  me
+}) {
   const [open, setOpen] = useState(false);
-  return (
-    <div className="border-t border-slate-100 first:border-t-0">
-      <div className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50">
-        <button onClick={() => setOpen((o) => !o)} className="w-6 shrink-0 flex justify-center text-slate-400 hover:text-slate-800">
-          {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-        </button>
-        <div className="flex-1 min-w-0"><Editable value={c.name} onChange={(v) => onField("name", v)} className="truncate font-medium text-slate-800" /></div>
-        <div className="hidden md:block w-28 shrink-0"><Editable value={c.owner} onChange={(v) => onField("owner", v)} placeholder="—" className="text-sm text-slate-700" /></div>
-        <input type="date" value={c.dueDate} onChange={(e) => onField("dueDate", e.target.value)}
-          className="hidden md:block w-32 shrink-0 text-sm text-slate-700 bg-transparent rounded px-2 py-1 border border-transparent hover:border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none" />
-        <div className="w-32 sm:w-36 shrink-0"><StatusSelect value={c.status} onChange={(v) => onField("status", v)} /></div>
-      </div>
-
-      {open && (
-        <div className="pl-9 pr-3 pb-3 space-y-3 bg-slate-50/50">
-          <div className="grid grid-cols-2 gap-3 md:hidden pt-1">
-            <div><div className="text-xs font-medium text-slate-500 mb-1">Owner</div><Editable value={c.owner} onChange={(v) => onField("owner", v)} placeholder="—" className="text-sm text-slate-700" /></div>
-            <div><div className="text-xs font-medium text-slate-500 mb-1">Due</div>
-              <input type="date" value={c.dueDate} onChange={(e) => onField("dueDate", e.target.value)} className="w-full text-sm text-slate-700 bg-white rounded px-2 py-1 border border-slate-200 focus:border-slate-900 focus:outline-none" /></div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 pt-1">
-            <div><div className="text-xs font-medium text-slate-500 mb-1">Brief link</div>
-              <div className="flex items-center gap-1">
-                <Editable value={c.briefLink} onChange={(v) => onField("briefLink", v)} placeholder="Paste a doc / drive link" className="text-sm text-slate-700" />
-                {c.briefLink ? <a href={c.briefLink} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-200 hover:text-slate-900" title="Open link"><ExternalLink size={15} /></a> : null}
-              </div>
-            </div>
-            <div><div className="text-xs font-medium text-slate-500 mb-1">Notes</div><Editable value={c.notes} onChange={(v) => onField("notes", v)} placeholder="Scope, key points, status detail…" multiline className="text-sm text-slate-700" /></div>
-          </div>
-          <div><div className="text-xs font-medium text-slate-500 mb-1">Anything else</div><Editable value={c.extra} onChange={(v) => onField("extra", v)} placeholder="Budgets, deliverables, dependencies, links…" multiline className="text-sm text-slate-700" /></div>
-          <CommentThread comments={c.comments || []} onAdd={onAddComment} me={me} />
-          <div className="flex justify-end"><button onClick={onDelete} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-900"><Trash2 size={13} /> Delete campaign</button></div>
-        </div>
-      )}
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", {
+    className: "border-t border-slate-100 first:border-t-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-3 px-3 py-2 hover:bg-slate-50"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setOpen(o => !o),
+    className: "w-6 shrink-0 flex justify-center text-slate-400 hover:text-slate-800"
+  }, open ? /*#__PURE__*/React.createElement(ChevronDown, {
+    size: 16
+  }) : /*#__PURE__*/React.createElement(ChevronRight, {
+    size: 16
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, /*#__PURE__*/React.createElement(Editable, {
+    value: c.name,
+    onChange: v => onField("name", v),
+    className: "truncate font-medium text-slate-800"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "hidden md:block w-28 shrink-0"
+  }, /*#__PURE__*/React.createElement(Editable, {
+    value: c.owner,
+    onChange: v => onField("owner", v),
+    placeholder: "—",
+    className: "text-sm text-slate-700"
+  })), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: c.dueDate,
+    onChange: e => onField("dueDate", e.target.value),
+    className: "hidden md:block w-32 shrink-0 text-sm text-slate-700 bg-transparent rounded px-2 py-1 border border-transparent hover:border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "w-32 sm:w-36 shrink-0"
+  }, /*#__PURE__*/React.createElement(StatusSelect, {
+    value: c.status,
+    onChange: v => onField("status", v)
+  }))), open && /*#__PURE__*/React.createElement("div", {
+    className: "pl-9 pr-3 pb-3 space-y-3 bg-slate-50/50"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 gap-3 md:hidden pt-1"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs font-medium text-slate-500 mb-1"
+  }, "Owner"), /*#__PURE__*/React.createElement(Editable, {
+    value: c.owner,
+    onChange: v => onField("owner", v),
+    placeholder: "—",
+    className: "text-sm text-slate-700"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs font-medium text-slate-500 mb-1"
+  }, "Due"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: c.dueDate,
+    onChange: e => onField("dueDate", e.target.value),
+    className: "w-full text-sm text-slate-700 bg-white rounded px-2 py-1 border border-slate-200 focus:border-slate-900 focus:outline-none"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "grid gap-3 sm:grid-cols-2 pt-1"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs font-medium text-slate-500 mb-1"
+  }, "Brief link"), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1"
+  }, /*#__PURE__*/React.createElement(Editable, {
+    value: c.briefLink,
+    onChange: v => onField("briefLink", v),
+    placeholder: "Paste a doc / drive link",
+    className: "text-sm text-slate-700"
+  }), c.briefLink ? /*#__PURE__*/React.createElement("a", {
+    href: c.briefLink,
+    target: "_blank",
+    rel: "noreferrer",
+    className: "p-1.5 rounded-lg text-slate-400 hover:bg-slate-200 hover:text-slate-900",
+    title: "Open link"
+  }, /*#__PURE__*/React.createElement(ExternalLink, {
+    size: 15
+  })) : null)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs font-medium text-slate-500 mb-1"
+  }, "Notes"), /*#__PURE__*/React.createElement(Editable, {
+    value: c.notes,
+    onChange: v => onField("notes", v),
+    placeholder: "Scope, key points, status detail…",
+    multiline: true,
+    className: "text-sm text-slate-700"
+  }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs font-medium text-slate-500 mb-1"
+  }, "Anything else"), /*#__PURE__*/React.createElement(Editable, {
+    value: c.extra,
+    onChange: v => onField("extra", v),
+    placeholder: "Budgets, deliverables, dependencies, links…",
+    multiline: true,
+    className: "text-sm text-slate-700"
+  })), /*#__PURE__*/React.createElement(CommentThread, {
+    comments: c.comments || [],
+    onAdd: onAddComment,
+    me: me
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-end"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onDelete,
+    className: "flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-900"
+  }, /*#__PURE__*/React.createElement(Trash2, {
+    size: 13
+  }), " Delete campaign"))));
 }
 
 /* ============================================================== */
 /*  Workstream panel                                              */
 /* ============================================================== */
-function Workstream({ ws, index, onField, onRename, onAddCampaign, onAddComment, onDeleteCampaign, onDeleteWs, me }) {
+function Workstream({
+  ws,
+  index,
+  onField,
+  onRename,
+  onAddCampaign,
+  onAddComment,
+  onDeleteCampaign,
+  onDeleteWs,
+  me
+}) {
   const [open, setOpen] = useState(true);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
   const counts = {};
-  ws.campaigns.forEach((c) => { counts[c.status] = (counts[c.status] || 0) + 1; });
-  const add = () => { const n = newName.trim(); if (!n) return; onAddCampaign(n); setNewName(""); setAdding(false); };
-  return (
-    <section className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-      <div className="flex items-center gap-3 px-3 py-3 border-b border-slate-100">
-        <button onClick={() => setOpen((o) => !o)} className="w-6 shrink-0 flex justify-center text-slate-400 hover:text-slate-800">{open ? <ChevronDown size={18} /> : <ChevronRight size={18} />}</button>
-        <span className="w-6 h-6 shrink-0 flex items-center justify-center rounded bg-slate-900 text-white text-xs font-semibold">{index + 1}</span>
-        <div className="flex-1 min-w-0"><Editable value={ws.name} onChange={onRename} className="font-semibold text-slate-900" /></div>
-        <div className="hidden sm:flex items-center gap-1">
-          {STATUSES.filter((s) => counts[s.id]).map((s) => (
-            <span key={s.id} className={"inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded border " + s.badge}><span className={"w-1.5 h-1.5 rounded-full " + s.dot} />{counts[s.id]}</span>
-          ))}
-        </div>
-        <span className="text-xs text-slate-400 shrink-0">{ws.campaigns.length}</span>
-        <button onClick={onDeleteWs} className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-100 hover:text-slate-900" title="Delete workstream"><Trash2 size={14} /></button>
-      </div>
-      {open && (
-        <div>
-          {ws.campaigns.length > 0 && (
-            <div className="flex items-center gap-3 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-slate-400 border-b border-slate-100 bg-slate-50/60">
-              <span className="w-6 shrink-0" /><span className="flex-1">Campaign</span>
-              <span className="hidden md:block w-28 shrink-0">Owner</span><span className="hidden md:block w-32 shrink-0">Due</span>
-              <span className="w-32 sm:w-36 shrink-0">Status</span>
-            </div>
-          )}
-          {ws.campaigns.map((c) => (
-            <CampaignRow key={c.id} c={c} me={me} onField={(f, v) => onField(c.id, f, v)} onAddComment={(t) => onAddComment(c.id, t)} onDelete={() => onDeleteCampaign(c.id)} />
-          ))}
-          <div className="px-3 py-2 border-t border-slate-100">
-            {adding ? (
-              <div className="flex items-center gap-2">
-                <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") add(); if (e.key === "Escape") setAdding(false); }} placeholder="New campaign name" className="flex-1 text-sm rounded-lg border border-slate-200 px-3 py-2 focus:border-slate-900 focus:outline-none" />
-                <button onClick={add} className="text-sm px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700">Add</button>
-                <button onClick={() => setAdding(false)} className="text-sm px-2 py-2 text-slate-400 hover:text-slate-700">Cancel</button>
-              </div>
-            ) : (
-              <button onClick={() => setAdding(true)} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900"><Plus size={15} /> Add campaign</button>
-            )}
-          </div>
-        </div>
-      )}
-    </section>
-  );
+  ws.campaigns.forEach(c => {
+    counts[c.status] = (counts[c.status] || 0) + 1;
+  });
+  const add = () => {
+    const n = newName.trim();
+    if (!n) return;
+    onAddCampaign(n);
+    setNewName("");
+    setAdding(false);
+  };
+  return /*#__PURE__*/React.createElement("section", {
+    className: "rounded-xl border border-slate-200 bg-white overflow-hidden"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-3 px-3 py-3 border-b border-slate-100"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setOpen(o => !o),
+    className: "w-6 shrink-0 flex justify-center text-slate-400 hover:text-slate-800"
+  }, open ? /*#__PURE__*/React.createElement(ChevronDown, {
+    size: 18
+  }) : /*#__PURE__*/React.createElement(ChevronRight, {
+    size: 18
+  })), /*#__PURE__*/React.createElement("span", {
+    className: "w-6 h-6 shrink-0 flex items-center justify-center rounded bg-slate-900 text-white text-xs font-semibold"
+  }, index + 1), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, /*#__PURE__*/React.createElement(Editable, {
+    value: ws.name,
+    onChange: onRename,
+    className: "font-semibold text-slate-900"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "hidden sm:flex items-center gap-1"
+  }, STATUSES.filter(s => counts[s.id]).map(s => /*#__PURE__*/React.createElement("span", {
+    key: s.id,
+    className: "inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded border " + s.badge
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "w-1.5 h-1.5 rounded-full " + s.dot
+  }), counts[s.id]))), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs text-slate-400 shrink-0"
+  }, ws.campaigns.length), /*#__PURE__*/React.createElement("button", {
+    onClick: onDeleteWs,
+    className: "p-1.5 rounded-lg text-slate-300 hover:bg-slate-100 hover:text-slate-900",
+    title: "Delete workstream"
+  }, /*#__PURE__*/React.createElement(Trash2, {
+    size: 14
+  }))), open && /*#__PURE__*/React.createElement("div", null, ws.campaigns.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-3 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-slate-400 border-b border-slate-100 bg-slate-50/60"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "w-6 shrink-0"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "flex-1"
+  }, "Campaign"), /*#__PURE__*/React.createElement("span", {
+    className: "hidden md:block w-28 shrink-0"
+  }, "Owner"), /*#__PURE__*/React.createElement("span", {
+    className: "hidden md:block w-32 shrink-0"
+  }, "Due"), /*#__PURE__*/React.createElement("span", {
+    className: "w-32 sm:w-36 shrink-0"
+  }, "Status")), ws.campaigns.map(c => /*#__PURE__*/React.createElement(CampaignRow, {
+    key: c.id,
+    c: c,
+    me: me,
+    onField: (f, v) => onField(c.id, f, v),
+    onAddComment: t => onAddComment(c.id, t),
+    onDelete: () => onDeleteCampaign(c.id)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "px-3 py-2 border-t border-slate-100"
+  }, adding ? /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("input", {
+    autoFocus: true,
+    value: newName,
+    onChange: e => setNewName(e.target.value),
+    onKeyDown: e => {
+      if (e.key === "Enter") add();
+      if (e.key === "Escape") setAdding(false);
+    },
+    placeholder: "New campaign name",
+    className: "flex-1 text-sm rounded-lg border border-slate-200 px-3 py-2 focus:border-slate-900 focus:outline-none"
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: add,
+    className: "text-sm px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700"
+  }, "Add"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAdding(false),
+    className: "text-sm px-2 py-2 text-slate-400 hover:text-slate-700"
+  }, "Cancel")) : /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAdding(true),
+    className: "flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900"
+  }, /*#__PURE__*/React.createElement(Plus, {
+    size: 15
+  }), " Add campaign"))));
 }
 
 /* ============================================================== */
 /*  Identity modal                                                */
 /* ============================================================== */
-function IdentityModal({ initial, onSave }) {
-  const [name, setName] = useState((initial && initial.name) || "");
-  const [team, setTeam] = useState((initial && initial.team) || "");
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
-        <h2 className="text-lg font-semibold text-slate-900">Who's editing?</h2>
-        <p className="text-sm text-slate-500 mt-1">Your name shows on comments and edits, so both teams know who did what.</p>
-        <div className="mt-4 space-y-3">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="w-full rounded-lg border border-slate-200 px-3 py-2 focus:border-slate-900 focus:outline-none" />
-          <div className="flex gap-2">
-            {["Go Colors", "Wirality"].map((t) => (
-              <button key={t} onClick={() => setTeam(t)} className={"flex-1 rounded-lg border px-3 py-2 text-sm font-medium flex items-center justify-center gap-1.5 " + (team === t ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 text-slate-600 hover:bg-slate-50")}>
-                {team === t && <Check size={14} />}{t}
-              </button>
-            ))}
-          </div>
-        </div>
-        <button disabled={!name.trim() || !team} onClick={() => onSave({ name: name.trim(), team })} className="mt-4 w-full rounded-lg bg-slate-900 text-white py-2 font-medium disabled:opacity-40 hover:bg-slate-700">Start</button>
-      </div>
-    </div>
-  );
+function IdentityModal({
+  initial,
+  onSave
+}) {
+  const [name, setName] = useState(initial && initial.name || "");
+  const [team, setTeam] = useState(initial && initial.team || "");
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "text-lg font-semibold text-slate-900"
+  }, "Who's editing?"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm text-slate-500 mt-1"
+  }, "Your name shows on comments and edits, so both teams know who did what."), /*#__PURE__*/React.createElement("div", {
+    className: "mt-4 space-y-3"
+  }, /*#__PURE__*/React.createElement("input", {
+    value: name,
+    onChange: e => setName(e.target.value),
+    placeholder: "Your name",
+    className: "w-full rounded-lg border border-slate-200 px-3 py-2 focus:border-slate-900 focus:outline-none"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2"
+  }, ["Go Colors", "Wirality"].map(t => /*#__PURE__*/React.createElement("button", {
+    key: t,
+    onClick: () => setTeam(t),
+    className: "flex-1 rounded-lg border px-3 py-2 text-sm font-medium flex items-center justify-center gap-1.5 " + (team === t ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 text-slate-600 hover:bg-slate-50")
+  }, team === t && /*#__PURE__*/React.createElement(Check, {
+    size: 14
+  }), t)))), /*#__PURE__*/React.createElement("button", {
+    disabled: !name.trim() || !team,
+    onClick: () => onSave({
+      name: name.trim(),
+      team
+    }),
+    className: "mt-4 w-full rounded-lg bg-slate-900 text-white py-2 font-medium disabled:opacity-40 hover:bg-slate-700"
+  }, "Start")));
 }
 
 /* ============================================================== */
@@ -340,203 +760,419 @@ function App() {
   const [syncing, setSyncing] = useState(false);
   const [syncedAt, setSyncedAt] = useState(null);
   const [lastEdit, setLastEdit] = useState(null);
-
   const meRef = useRef(null);
-  const docRef = useRef(null); docRef.current = doc;
+  const docRef = useRef(null);
+  docRef.current = doc;
   const pending = useRef({});
   const flushTimers = useRef({});
   const flushing = useRef({});
   const wsTimers = useRef({});
   const lastPulse = useRef(0);
   const indexLock = useRef(false);
-
-  const setMeBoth = (m) => { meRef.current = m; setMe(m); };
-  const whoami = () => (meRef.current && meRef.current.name) || "Someone";
-
-  const patchCampaign = (campId, fields) => setDoc((prev) => prev && ({ ...prev, workstreams: prev.workstreams.map((w) => ({ ...w, campaigns: w.campaigns.map((c) => c.id === campId ? { ...c, ...fields } : c) })) }));
-  const pushComment = (campId, comment) => setDoc((prev) => prev && ({ ...prev, workstreams: prev.workstreams.map((w) => ({ ...w, campaigns: w.campaigns.map((c) => c.id === campId ? { ...c, comments: [...(c.comments || []), comment] } : c) })) }));
-
-  const bumpPulse = async () => { const p = { at: Date.now(), by: whoami() }; lastPulse.current = p.at; setLastEdit(p); await sSet(PULSE_KEY, p); };
-
-  const ensurePending = (campId) => { if (!pending.current[campId]) pending.current[campId] = { fields: {}, comments: [] }; return pending.current[campId]; };
-  const scheduleFlush = (campId, delay = 600) => { if (flushTimers.current[campId]) clearTimeout(flushTimers.current[campId]); flushTimers.current[campId] = setTimeout(() => flushCampaign(campId), delay); };
-
-  const flushCampaign = async (campId) => {
-    if (flushing.current[campId]) { scheduleFlush(campId, 250); return; }
+  const setMeBoth = m => {
+    meRef.current = m;
+    setMe(m);
+  };
+  const whoami = () => meRef.current && meRef.current.name || "Someone";
+  const patchCampaign = (campId, fields) => setDoc(prev => prev && {
+    ...prev,
+    workstreams: prev.workstreams.map(w => ({
+      ...w,
+      campaigns: w.campaigns.map(c => c.id === campId ? {
+        ...c,
+        ...fields
+      } : c)
+    }))
+  });
+  const pushComment = (campId, comment) => setDoc(prev => prev && {
+    ...prev,
+    workstreams: prev.workstreams.map(w => ({
+      ...w,
+      campaigns: w.campaigns.map(c => c.id === campId ? {
+        ...c,
+        comments: [...(c.comments || []), comment]
+      } : c)
+    }))
+  });
+  const bumpPulse = async () => {
+    const p = {
+      at: Date.now(),
+      by: whoami()
+    };
+    lastPulse.current = p.at;
+    setLastEdit(p);
+    await sSet(PULSE_KEY, p);
+  };
+  const ensurePending = campId => {
+    if (!pending.current[campId]) pending.current[campId] = {
+      fields: {},
+      comments: []
+    };
+    return pending.current[campId];
+  };
+  const scheduleFlush = (campId, delay = 600) => {
+    if (flushTimers.current[campId]) clearTimeout(flushTimers.current[campId]);
+    flushTimers.current[campId] = setTimeout(() => flushCampaign(campId), delay);
+  };
+  const flushCampaign = async campId => {
+    if (flushing.current[campId]) {
+      scheduleFlush(campId, 250);
+      return;
+    }
     const pend = pending.current[campId];
-    if (!pend || (!Object.keys(pend.fields).length && !pend.comments.length)) return;
+    if (!pend || !Object.keys(pend.fields).length && !pend.comments.length) return;
     flushing.current[campId] = true;
-    const fields = { ...pend.fields }; const comments = [...pend.comments];
-    pend.fields = {}; pend.comments = [];
+    const fields = {
+      ...pend.fields
+    };
+    const comments = [...pend.comments];
+    pend.fields = {};
+    pend.comments = [];
     setSyncing(true);
     try {
       let base = await readCamp(campId);
-      if (!base) { const local = docRef.current && docRef.current.workstreams.flatMap((w) => w.campaigns).find((c) => c.id === campId); base = local ? { ...local } : { id: campId, comments: [] }; }
-      const merged = { ...base, ...fields };
-      const have = new Set((base.comments || []).map((x) => x.id));
+      if (!base) {
+        const local = docRef.current && docRef.current.workstreams.flatMap(w => w.campaigns).find(c => c.id === campId);
+        base = local ? {
+          ...local
+        } : {
+          id: campId,
+          comments: []
+        };
+      }
+      const merged = {
+        ...base,
+        ...fields
+      };
+      const have = new Set((base.comments || []).map(x => x.id));
       merged.comments = [...(base.comments || [])];
       for (const cm of comments) if (!have.has(cm.id)) merged.comments.push(cm);
-      merged.updatedAt = Date.now(); merged.updatedBy = whoami();
+      merged.updatedAt = Date.now();
+      merged.updatedBy = whoami();
       await sSet(campKey(campId), merged);
       await bumpPulse();
       patchCampaign(campId, merged);
       setSyncedAt(Date.now());
     } finally {
-      setSyncing(false); flushing.current[campId] = false;
+      setSyncing(false);
+      flushing.current[campId] = false;
       const p = pending.current[campId];
       if (p && (Object.keys(p.fields).length || p.comments.length)) scheduleFlush(campId, 200);
     }
   };
-
-  const withIndex = async (fn) => {
-    while (indexLock.current) await new Promise((r) => setTimeout(r, 40));
-    indexLock.current = true; setSyncing(true);
+  const withIndex = async fn => {
+    while (indexLock.current) await new Promise(r => setTimeout(r, 40));
+    indexLock.current = true;
+    setSyncing(true);
     try {
       let idx = (await readIndex()) || (await ensureData());
       const next = fn(JSON.parse(JSON.stringify(idx)));
-      next.updatedAt = Date.now(); next.updatedBy = whoami();
-      await sSet(IDX_KEY, next); await bumpPulse(); setSyncedAt(Date.now());
-    } finally { setSyncing(false); indexLock.current = false; }
+      next.updatedAt = Date.now();
+      next.updatedBy = whoami();
+      await sSet(IDX_KEY, next);
+      await bumpPulse();
+      setSyncedAt(Date.now());
+    } finally {
+      setSyncing(false);
+      indexLock.current = false;
+    }
   };
-
-  const editCampaign = (campId, field, value) => { patchCampaign(campId, { [field]: value }); ensurePending(campId).fields[field] = value; scheduleFlush(campId); };
-  const addComment = (campId, text) => { const comment = { id: uid(), author: whoami(), team: (meRef.current && meRef.current.team) || "", text, ts: Date.now() }; pushComment(campId, comment); ensurePending(campId).comments.push(comment); flushCampaign(campId); };
+  const editCampaign = (campId, field, value) => {
+    patchCampaign(campId, {
+      [field]: value
+    });
+    ensurePending(campId).fields[field] = value;
+    scheduleFlush(campId);
+  };
+  const addComment = (campId, text) => {
+    const comment = {
+      id: uid(),
+      author: whoami(),
+      team: meRef.current && meRef.current.team || "",
+      text,
+      ts: Date.now()
+    };
+    pushComment(campId, comment);
+    ensurePending(campId).comments.push(comment);
+    flushCampaign(campId);
+  };
   const renameWorkstream = (wsId, name) => {
-    setDoc((prev) => prev && ({ ...prev, workstreams: prev.workstreams.map((w) => w.id === wsId ? { ...w, name } : w) }));
+    setDoc(prev => prev && {
+      ...prev,
+      workstreams: prev.workstreams.map(w => w.id === wsId ? {
+        ...w,
+        name
+      } : w)
+    });
     if (wsTimers.current[wsId]) clearTimeout(wsTimers.current[wsId]);
-    wsTimers.current[wsId] = setTimeout(() => withIndex((idx) => { const w = idx.workstreams.find((w) => w.id === wsId); if (w) w.name = name; return idx; }), 600);
+    wsTimers.current[wsId] = setTimeout(() => withIndex(idx => {
+      const w = idx.workstreams.find(w => w.id === wsId);
+      if (w) w.name = name;
+      return idx;
+    }), 600);
   };
   const addCampaign = async (wsId, name) => {
     const camp = blankCampaign(name, whoami());
-    setDoc((prev) => prev && ({ ...prev, workstreams: prev.workstreams.map((w) => w.id === wsId ? { ...w, campaigns: [...w.campaigns, camp] } : w) }));
+    setDoc(prev => prev && {
+      ...prev,
+      workstreams: prev.workstreams.map(w => w.id === wsId ? {
+        ...w,
+        campaigns: [...w.campaigns, camp]
+      } : w)
+    });
     await sSet(campKey(camp.id), camp);
-    await withIndex((idx) => { const w = idx.workstreams.find((w) => w.id === wsId); if (w) w.campaignIds = [...w.campaignIds, camp.id]; return idx; });
+    await withIndex(idx => {
+      const w = idx.workstreams.find(w => w.id === wsId);
+      if (w) w.campaignIds = [...w.campaignIds, camp.id];
+      return idx;
+    });
   };
   const deleteCampaign = async (wsId, campId) => {
-    setDoc((prev) => prev && ({ ...prev, workstreams: prev.workstreams.map((w) => w.id === wsId ? { ...w, campaigns: w.campaigns.filter((c) => c.id !== campId) } : w) }));
+    setDoc(prev => prev && {
+      ...prev,
+      workstreams: prev.workstreams.map(w => w.id === wsId ? {
+        ...w,
+        campaigns: w.campaigns.filter(c => c.id !== campId)
+      } : w)
+    });
     delete pending.current[campId];
-    await withIndex((idx) => { const w = idx.workstreams.find((w) => w.id === wsId); if (w) w.campaignIds = w.campaignIds.filter((id) => id !== campId); return idx; });
+    await withIndex(idx => {
+      const w = idx.workstreams.find(w => w.id === wsId);
+      if (w) w.campaignIds = w.campaignIds.filter(id => id !== campId);
+      return idx;
+    });
     await sDel(campKey(campId));
   };
   const addWorkstream = async () => {
-    const ws = { id: uid(), name: "New workstream" };
-    setDoc((prev) => prev && ({ ...prev, workstreams: [...prev.workstreams, { ...ws, campaigns: [] }] }));
-    await withIndex((idx) => { idx.workstreams.push({ id: ws.id, name: ws.name, campaignIds: [] }); return idx; });
+    const ws = {
+      id: uid(),
+      name: "New workstream"
+    };
+    setDoc(prev => prev && {
+      ...prev,
+      workstreams: [...prev.workstreams, {
+        ...ws,
+        campaigns: []
+      }]
+    });
+    await withIndex(idx => {
+      idx.workstreams.push({
+        id: ws.id,
+        name: ws.name,
+        campaignIds: []
+      });
+      return idx;
+    });
   };
-  const deleteWorkstream = async (wsId) => {
-    const w = docRef.current && docRef.current.workstreams.find((w) => w.id === wsId);
-    const campIds = w ? w.campaigns.map((c) => c.id) : [];
-    setDoc((prev) => prev && ({ ...prev, workstreams: prev.workstreams.filter((w) => w.id !== wsId) }));
-    await withIndex((idx) => { idx.workstreams = idx.workstreams.filter((w) => w.id !== wsId); return idx; });
+  const deleteWorkstream = async wsId => {
+    const w = docRef.current && docRef.current.workstreams.find(w => w.id === wsId);
+    const campIds = w ? w.campaigns.map(c => c.id) : [];
+    setDoc(prev => prev && {
+      ...prev,
+      workstreams: prev.workstreams.filter(w => w.id !== wsId)
+    });
+    await withIndex(idx => {
+      idx.workstreams = idx.workstreams.filter(w => w.id !== wsId);
+      return idx;
+    });
     for (const id of campIds) await sDel(campKey(id));
   };
-
-  const overlayPending = (a) => ({
-    ...a, workstreams: a.workstreams.map((w) => ({ ...w, campaigns: w.campaigns.map((c) => {
-      const pc = pending.current[c.id]; if (!pc) return c;
-      let nc = { ...c, ...pc.fields };
-      if (pc.comments && pc.comments.length) { const have = new Set((c.comments || []).map((x) => x.id)); nc.comments = [...(c.comments || []), ...pc.comments.filter((x) => !have.has(x.id))]; }
-      return nc;
-    }) })),
+  const overlayPending = a => ({
+    ...a,
+    workstreams: a.workstreams.map(w => ({
+      ...w,
+      campaigns: w.campaigns.map(c => {
+        const pc = pending.current[c.id];
+        if (!pc) return c;
+        let nc = {
+          ...c,
+          ...pc.fields
+        };
+        if (pc.comments && pc.comments.length) {
+          const have = new Set((c.comments || []).map(x => x.id));
+          nc.comments = [...(c.comments || []), ...pc.comments.filter(x => !have.has(x.id))];
+        }
+        return nc;
+      })
+    }))
   });
-  const pullRemote = async () => { const a = await assemble(); setDoc(overlayPending(a)); setSyncedAt(Date.now()); };
-
+  const pullRemote = async () => {
+    const a = await assemble();
+    setDoc(overlayPending(a));
+    setSyncedAt(Date.now());
+  };
   useEffect(() => {
     (async () => {
       const savedMe = readMe();
-      if (savedMe) setMeBoth(savedMe); else setNeedName(true);
-      const p = await readPulse(); if (p) { lastPulse.current = p.at; setLastEdit(p); }
+      if (savedMe) setMeBoth(savedMe);else setNeedName(true);
+      const p = await readPulse();
+      if (p) {
+        lastPulse.current = p.at;
+        setLastEdit(p);
+      }
       await pullRemote();
     })();
   }, []);
-
   useEffect(() => {
     const iv = setInterval(async () => {
       const p = await readPulse();
-      if (p && p.at > lastPulse.current) { lastPulse.current = p.at; setLastEdit(p); await pullRemote(); }
+      if (p && p.at > lastPulse.current) {
+        lastPulse.current = p.at;
+        setLastEdit(p);
+        await pullRemote();
+      }
     }, 6000);
     return () => clearInterval(iv);
   }, []);
-
-  const manualRefresh = async () => { setSyncing(true); const p = await readPulse(); if (p) { lastPulse.current = p.at; setLastEdit(p); } await pullRemote(); setSyncing(false); };
-  const saveMe = (m) => { setMeBoth(m); setNeedName(false); writeMe(m); };
-
-  if (!doc) return <div className="min-h-screen flex items-center justify-center text-slate-400 bg-slate-100"><RefreshCw className="animate-spin mr-2" size={18} /> Loading tracker…</div>;
-
-  const all = doc.workstreams.flatMap((w) => w.campaigns);
+  const manualRefresh = async () => {
+    setSyncing(true);
+    const p = await readPulse();
+    if (p) {
+      lastPulse.current = p.at;
+      setLastEdit(p);
+    }
+    await pullRemote();
+    setSyncing(false);
+  };
+  const saveMe = m => {
+    setMeBoth(m);
+    setNeedName(false);
+    writeMe(m);
+  };
+  if (!doc) return /*#__PURE__*/React.createElement("div", {
+    className: "min-h-screen flex items-center justify-center text-slate-400 bg-slate-100"
+  }, /*#__PURE__*/React.createElement(RefreshCw, {
+    className: "animate-spin mr-2",
+    size: 18
+  }), " Loading tracker…");
+  const all = doc.workstreams.flatMap(w => w.campaigns);
   const totals = {};
-  all.forEach((c) => { totals[c.status] = (totals[c.status] || 0) + 1; });
-
-  return (
-    <div className="min-h-screen bg-slate-100 text-slate-800">
-      {needName && <IdentityModal initial={me} onSave={saveMe} />}
-
-      <header className="bg-slate-900 text-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <img src={LOGO} alt="Wirality" className="h-7 w-auto" />
-              <div className="h-7 w-px bg-white/20" />
-              <div className="min-w-0">
-                <div className="text-xs text-white/50 leading-none mb-0.5">Campaign tracker</div>
-                <h1 className="text-base sm:text-lg font-semibold leading-tight truncate">Go Colors × Wirality</h1>
-              </div>
-            </div>
-            {me && (
-              <button onClick={() => setNeedName(true)} className="flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/20 px-3 py-1.5 text-sm shrink-0" title="Change name">
-                <CircleUser size={16} /><span className="font-medium hidden sm:inline">{me.name}</span><TeamTag team={me.team} />
-              </button>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5 mt-4">
-            {STATUSES.map((s) => (
-              <span key={s.id} className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1 text-xs">
-                <span className={"w-2 h-2 rounded-full " + s.dot} /><span className="text-white/70">{s.label}</span><span className="font-semibold tabular-nums">{totals[s.id] || 0}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      </header>
-
-      {!CONFIGURED && (
-        <div className="bg-amber-50 border-b border-amber-200 text-amber-800 text-xs">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-2">Local preview mode — data is saved only in this browser. Add your Supabase URL and key at the top of index.html to turn on shared saving for both teams.</div>
-        </div>
-      )}
-
-      <div className="sticky top-0 z-30 bg-slate-100/90 backdrop-blur border-b border-slate-200">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
-          <div className="text-xs text-slate-500 truncate flex items-center gap-1.5">
-            {syncing ? (<span className="inline-flex items-center gap-1.5"><RefreshCw size={12} className="animate-spin" /> Saving…</span>) : (
-              <>
-                <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-green-500" />{CONFIGURED ? "Saved" : "Saved locally"}</span>
-                {lastEdit && lastEdit.by ? <span className="text-slate-400 truncate">· last edit by {lastEdit.by} {relTime(lastEdit.at)}</span> : null}
-              </>
-            )}
-          </div>
-          <button onClick={manualRefresh} className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 shrink-0"><RefreshCw size={14} /> Refresh</button>
-        </div>
-      </div>
-
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-3">
-        {doc.workstreams.map((ws, i) => (
-          <Workstream key={ws.id} ws={ws} index={i} me={me || { name: "", team: "" }}
-            onRename={(name) => renameWorkstream(ws.id, name)}
-            onField={(cid, field, value) => editCampaign(cid, field, value)}
-            onAddCampaign={(name) => addCampaign(ws.id, name)}
-            onAddComment={(cid, text) => addComment(cid, text)}
-            onDeleteCampaign={(cid) => deleteCampaign(ws.id, cid)}
-            onDeleteWs={() => { if (window.confirm('Delete the "' + ws.name + '" workstream and all its campaigns?')) deleteWorkstream(ws.id); }}
-          />
-        ))}
-        <button onClick={addWorkstream} className="flex items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm text-slate-500 hover:border-slate-900 hover:text-slate-900 w-full justify-center"><Plus size={16} /> Add workstream</button>
-        <p className="text-center text-xs text-slate-400 pt-2 flex items-center justify-center gap-1.5"><Users size={12} /> Built for both teams — everyone with the link edits the same live tracker; changes save on their own and sync automatically.</p>
-      </main>
-    </div>
-  );
+  all.forEach(c => {
+    totals[c.status] = (totals[c.status] || 0) + 1;
+  });
+  return /*#__PURE__*/React.createElement("div", {
+    className: "min-h-screen bg-slate-100 text-slate-800"
+  }, needName && /*#__PURE__*/React.createElement(IdentityModal, {
+    initial: me,
+    onSave: saveMe
+  }), /*#__PURE__*/React.createElement("header", {
+    className: "bg-slate-900 text-white"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "max-w-5xl mx-auto px-4 sm:px-6 py-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between gap-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-3 min-w-0"
+  }, /*#__PURE__*/React.createElement("img", {
+    src: LOGO,
+    alt: "Wirality",
+    className: "h-7 w-auto"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "h-7 w-px bg-white/20"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "min-w-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs text-white/50 leading-none mb-0.5"
+  }, "Campaign tracker"), /*#__PURE__*/React.createElement("h1", {
+    className: "text-base sm:text-lg font-semibold leading-tight truncate"
+  }, "Go Colors × Wirality"))), me && /*#__PURE__*/React.createElement("button", {
+    onClick: () => setNeedName(true),
+    className: "flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/20 px-3 py-1.5 text-sm shrink-0",
+    title: "Change name"
+  }, /*#__PURE__*/React.createElement(CircleUser, {
+    size: 16
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "font-medium hidden sm:inline"
+  }, me.name), /*#__PURE__*/React.createElement(TeamTag, {
+    team: me.team
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap items-center gap-1.5 mt-4"
+  }, STATUSES.map(s => /*#__PURE__*/React.createElement("span", {
+    key: s.id,
+    className: "inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1 text-xs"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "w-2 h-2 rounded-full " + s.dot
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-white/70"
+  }, s.label), /*#__PURE__*/React.createElement("span", {
+    className: "font-semibold tabular-nums"
+  }, totals[s.id] || 0)))))), !REMOTE && /*#__PURE__*/React.createElement("div", {
+    className: "bg-amber-50 border-b border-amber-200 text-amber-800 text-xs"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "max-w-5xl mx-auto px-4 sm:px-6 py-2"
+  }, "Local preview mode — data is saved only in this browser. Add your Supabase URL and key at the top of index.html to turn on shared saving for both teams.")), /*#__PURE__*/React.createElement("div", {
+    className: "sticky top-0 z-30 bg-slate-100/90 backdrop-blur border-b border-slate-200"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "max-w-5xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs text-slate-500 truncate flex items-center gap-1.5"
+  }, syncing ? /*#__PURE__*/React.createElement("span", {
+    className: "inline-flex items-center gap-1.5"
+  }, /*#__PURE__*/React.createElement(RefreshCw, {
+    size: 12,
+    className: "animate-spin"
+  }), " Saving…") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+    className: "inline-flex items-center gap-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "w-1.5 h-1.5 rounded-full bg-green-500"
+  }), REMOTE ? "Saved" : "Saved locally"), lastEdit && lastEdit.by ? /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400 truncate"
+  }, "· last edit by ", lastEdit.by, " ", relTime(lastEdit.at)) : null)), /*#__PURE__*/React.createElement("button", {
+    onClick: manualRefresh,
+    className: "inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 shrink-0"
+  }, /*#__PURE__*/React.createElement(RefreshCw, {
+    size: 14
+  }), " Refresh"))), /*#__PURE__*/React.createElement("main", {
+    className: "max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-3"
+  }, doc.workstreams.map((ws, i) => /*#__PURE__*/React.createElement(Workstream, {
+    key: ws.id,
+    ws: ws,
+    index: i,
+    me: me || {
+      name: "",
+      team: ""
+    },
+    onRename: name => renameWorkstream(ws.id, name),
+    onField: (cid, field, value) => editCampaign(cid, field, value),
+    onAddCampaign: name => addCampaign(ws.id, name),
+    onAddComment: (cid, text) => addComment(cid, text),
+    onDeleteCampaign: cid => deleteCampaign(ws.id, cid),
+    onDeleteWs: () => {
+      if (window.confirm('Delete the "' + ws.name + '" workstream and all its campaigns?')) deleteWorkstream(ws.id);
+    }
+  })), /*#__PURE__*/React.createElement("button", {
+    onClick: addWorkstream,
+    className: "flex items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm text-slate-500 hover:border-slate-900 hover:text-slate-900 w-full justify-center"
+  }, /*#__PURE__*/React.createElement(Plus, {
+    size: 16
+  }), " Add workstream"), /*#__PURE__*/React.createElement("p", {
+    className: "text-center text-xs text-slate-400 pt-2 flex items-center justify-center gap-1.5"
+  }, /*#__PURE__*/React.createElement(Users, {
+    size: 12
+  }), " Built for both teams — everyone with the link edits the same live tracker; changes save on their own and sync automatically.")));
 }
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
+  </script>
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  <!-- Safety net: show a message instead of a blank page if something failed to load -->
+  <script>
+    window.addEventListener("load", function () {
+      setTimeout(function () {
+        var r = document.getElementById("root");
+        if (!r || r.childElementCount === 0) {
+          r.innerHTML =
+            '<div style="font-family:system-ui,sans-serif;max-width:640px;margin:60px auto;padding:24px;color:#334155;line-height:1.6">' +
+            '<h2 style="margin:0 0 8px">The tracker didn\'t load</h2>' +
+            '<p>This is almost always one of two things:</p>' +
+            '<ol>' +
+            '<li>The two lines near the top of this file (your Supabase URL and key) got altered — check that each value is inside its quotes and the line ends with a semicolon.</li>' +
+            '<li>A required script was blocked — try opening this page in Chrome or Safari, or disable any ad/script blocker for this site.</li>' +
+            '</ol>' +
+            '<p>Once fixed, refresh this page.</p>' +
+            '</div>';
+        }
+      }, 3500);
+    });
   </script>
 </body>
 </html>
