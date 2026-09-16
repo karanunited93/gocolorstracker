@@ -17,14 +17,14 @@
   <!--  EDIT ONLY THESE TWO LINES: paste your Supabase URL and key   -->
   <!-- ============================================================= -->
   <script>
-    window.SUPABASE_URL      = "https://zzbykakjodudsemnppte.supabase.co";  
-    window.SUPABASE_ANON_KEY = "sb_publishable__2RXB0Ox7oTEZg6UWvq-dA_ktS9XdC5";   
+    window.SUPABASE_URL      = "YOUR-PROJECT-URL";   // e.g. https://abcd1234.supabase.co
+    window.SUPABASE_ANON_KEY = "YOUR-ANON-KEY";      // your publishable / anon key
   </script>
 
   <!-- App (pre-compiled, no in-browser build step) -->
   <script>
 /* ============================================================== */
-/*  CONFIG — paste your Supabase values here (see README)         */
+/*  CONFIG (read from window; edited at top of index.html)        */
 /* ============================================================== */
 const SUPABASE_URL = window.SUPABASE_URL || "YOUR-PROJECT-URL";
 const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "YOUR-ANON-KEY";
@@ -80,10 +80,43 @@ const STATUSES = [{
   dot: "bg-rose-500"
 }];
 const statusMeta = id => STATUSES.find(s => s.id === id) || STATUSES[0];
+const INF_STATUSES = [{
+  id: "shortlisted",
+  label: "Shortlisted",
+  badge: "bg-slate-100 text-slate-600 border-slate-200",
+  dot: "bg-slate-400"
+}, {
+  id: "contacted",
+  label: "Contacted",
+  badge: "bg-blue-50 text-blue-700 border-blue-200",
+  dot: "bg-blue-500"
+}, {
+  id: "confirmed",
+  label: "Confirmed",
+  badge: "bg-violet-50 text-violet-700 border-violet-200",
+  dot: "bg-violet-500"
+}, {
+  id: "live",
+  label: "Content live",
+  badge: "bg-green-50 text-green-700 border-green-200",
+  dot: "bg-green-500"
+}, {
+  id: "paid",
+  label: "Paid",
+  badge: "bg-slate-800 text-white border-slate-800",
+  dot: "bg-slate-900"
+}, {
+  id: "dropped",
+  label: "Dropped",
+  badge: "bg-rose-50 text-rose-700 border-rose-200",
+  dot: "bg-rose-500"
+}];
+const infStatusMeta = id => INF_STATUSES.find(s => s.id === id) || INF_STATUSES[0];
+const PLATFORMS = ["Instagram", "YouTube", "Facebook", "X / Twitter", "LinkedIn", "Other"];
 const uid = () => window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : "id-" + Date.now() + "-" + Math.floor(Math.random() * 1e6);
 
 /* ============================================================== */
-/*  Icons (inline)                                                */
+/*  Icons                                                         */
 /* ============================================================== */
 const isz = s => ({
   width: s || 16,
@@ -112,9 +145,20 @@ const ChevronDown = ({
   d: "M6 9l6 6 6-6"
 }));
 const ChevronRight = ({
+  size,
+  className
+}) => /*#__PURE__*/React.createElement("svg", {
+  ...isz(size),
+  className: className
+}, /*#__PURE__*/React.createElement("path", {
+  d: "M9 6l6 6-6 6"
+}));
+const ArrowLeft = ({
   size
 }) => /*#__PURE__*/React.createElement("svg", isz(size), /*#__PURE__*/React.createElement("path", {
-  d: "M9 6l6 6-6 6"
+  d: "M19 12H5"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M12 19l-7-7 7-7"
 }));
 const RefreshCw = ({
   size,
@@ -152,6 +196,15 @@ const ExternalLink = ({
   d: "M10 14 21 3"
 }), /*#__PURE__*/React.createElement("path", {
   d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+}));
+const Link2 = ({
+  size
+}) => /*#__PURE__*/React.createElement("svg", isz(size), /*#__PURE__*/React.createElement("path", {
+  d: "M9 17H7A5 5 0 0 1 7 7h2"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M15 7h2a5 5 0 1 1 0 10h-2"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M8 12h8"
 }));
 const MessageSquare = ({
   size
@@ -198,8 +251,7 @@ const Users = ({
 }));
 
 /* ============================================================== */
-/*  Storage engine — Supabase key/value (or localStorage locally) */
-/*  Table: kv(k text primary key, v jsonb)                        */
+/*  Storage engine (Supabase kv, or localStorage locally)         */
 /* ============================================================== */
 const IDX_KEY = "gc:index";
 const PULSE_KEY = "gc:pulse";
@@ -262,12 +314,31 @@ const blankCampaign = (name, by) => ({
   status: "not_started",
   owner: "",
   dueDate: "",
+  budget: "",
   briefLink: "",
   notes: "",
   extra: "",
+  influencers: [],
+  links: [],
   comments: [],
   updatedAt: Date.now(),
   updatedBy: by || "Setup"
+});
+const blankInfluencer = () => ({
+  id: uid(),
+  name: "",
+  handle: "",
+  platform: "Instagram",
+  followers: "",
+  deliverables: "",
+  link: "",
+  status: "shortlisted",
+  notes: ""
+});
+const blankLink = () => ({
+  id: uid(),
+  label: "",
+  url: ""
 });
 function seedWorkstreams(by) {
   const mk = (name, extra = {}) => ({
@@ -377,12 +448,21 @@ function TeamTag({
     className: "text-[10px] px-1.5 py-0.5 rounded font-medium " + (team === "Wirality" ? "bg-slate-900 text-white" : "bg-white text-slate-900 border border-slate-300")
   }, team);
 }
+function Field({
+  label,
+  children
+}) {
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs font-medium text-slate-500 mb-1"
+  }, label), children);
+}
 function Editable({
   value,
   onChange,
   placeholder,
   className,
-  multiline
+  multiline,
+  rows
 }) {
   const [local, setLocal] = useState(value || "");
   const focused = useRef(false);
@@ -401,10 +481,10 @@ function Editable({
     },
     onChange: e => setLocal(e.target.value),
     onBlur: commit,
-    className: "w-full bg-transparent rounded px-2 py-1 border border-transparent hover:border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none transition-colors " + (className || "")
+    className: "w-full bg-white rounded-lg px-3 py-2 border border-slate-200 focus:border-slate-900 focus:outline-none transition-colors " + (className || "")
   };
   return multiline ? /*#__PURE__*/React.createElement("textarea", {
-    rows: 2,
+    rows: rows || 3,
     ...props,
     className: props.className + " resize-y leading-relaxed"
   }) : /*#__PURE__*/React.createElement("input", {
@@ -414,18 +494,21 @@ function Editable({
 }
 function StatusSelect({
   value,
-  onChange
+  onChange,
+  options,
+  metaFn
 }) {
-  const sm = statusMeta(value);
+  const opts = options || STATUSES;
+  const sm = (metaFn || statusMeta)(value);
   return /*#__PURE__*/React.createElement("div", {
-    className: "relative w-full"
+    className: "relative"
   }, /*#__PURE__*/React.createElement("span", {
     className: "absolute left-2.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full pointer-events-none " + sm.dot
   }), /*#__PURE__*/React.createElement("select", {
     value: value,
     onChange: e => onChange(e.target.value),
     className: "appearance-none cursor-pointer w-full text-xs font-medium rounded-md border pl-6 pr-6 py-1.5 " + sm.badge
-  }, STATUSES.map(s => /*#__PURE__*/React.createElement("option", {
+  }, opts.map(s => /*#__PURE__*/React.createElement("option", {
     key: s.id,
     value: s.id,
     className: "bg-white text-slate-800"
@@ -447,15 +530,15 @@ function CommentThread({
     onAdd(t);
     setDraft("");
   };
-  return /*#__PURE__*/React.createElement("div", {
-    className: "mt-3 border-t border-slate-100 pt-3"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center gap-1.5 text-xs font-medium text-slate-500 mb-2"
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1.5 text-sm font-semibold text-slate-800 mb-3"
   }, /*#__PURE__*/React.createElement(MessageSquare, {
-    size: 13
-  }), comments.length ? comments.length + " comment" + (comments.length > 1 ? "s" : "") : "Comments"), /*#__PURE__*/React.createElement("div", {
-    className: "space-y-2 mb-2"
-  }, comments.map(c => /*#__PURE__*/React.createElement("div", {
+    size: 15
+  }), " Comments"), /*#__PURE__*/React.createElement("div", {
+    className: "space-y-3 mb-3"
+  }, comments.length === 0 && /*#__PURE__*/React.createElement("div", {
+    className: "text-sm text-slate-400"
+  }, "No comments yet."), comments.map(c => /*#__PURE__*/React.createElement("div", {
     key: c.id,
     className: "text-sm"
   }, /*#__PURE__*/React.createElement("div", {
@@ -477,7 +560,7 @@ function CommentThread({
       if (e.key === "Enter") submit();
     },
     placeholder: "Comment as " + (me.name || "you") + "…",
-    className: "flex-1 text-sm rounded-lg border border-slate-200 px-3 py-1.5 focus:border-slate-900 focus:outline-none"
+    className: "flex-1 text-sm rounded-lg border border-slate-200 px-3 py-2 focus:border-slate-900 focus:outline-none"
   }), /*#__PURE__*/React.createElement("button", {
     onClick: submit,
     className: "p-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700",
@@ -488,115 +571,373 @@ function CommentThread({
 }
 
 /* ============================================================== */
-/*  Campaign row                                                  */
+/*  Influencer card                                               */
 /* ============================================================== */
-function CampaignRow({
+function InfluencerCard({
+  inf,
+  onChange,
+  onDelete
+}) {
+  const set = (field, v) => onChange({
+    ...inf,
+    [field]: v
+  });
+  return /*#__PURE__*/React.createElement("div", {
+    className: "rounded-xl border border-slate-200 bg-slate-50/60 p-3 space-y-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex-1"
+  }, /*#__PURE__*/React.createElement(Editable, {
+    value: inf.name,
+    onChange: v => set("name", v),
+    placeholder: "Influencer name",
+    className: "font-medium"
+  })), /*#__PURE__*/React.createElement("button", {
+    onClick: onDelete,
+    className: "p-2 rounded-lg text-slate-300 hover:bg-slate-200 hover:text-slate-900",
+    title: "Remove influencer"
+  }, /*#__PURE__*/React.createElement(Trash2, {
+    size: 15
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "grid gap-3 sm:grid-cols-2"
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Handle"
+  }, /*#__PURE__*/React.createElement(Editable, {
+    value: inf.handle,
+    onChange: v => set("handle", v),
+    placeholder: "@handle",
+    className: "text-sm"
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Platform"
+  }, /*#__PURE__*/React.createElement("select", {
+    value: inf.platform,
+    onChange: e => set("platform", e.target.value),
+    className: "w-full text-sm bg-white rounded-lg px-3 py-2 border border-slate-200 focus:border-slate-900 focus:outline-none"
+  }, PLATFORMS.map(p => /*#__PURE__*/React.createElement("option", {
+    key: p,
+    value: p
+  }, p)))), /*#__PURE__*/React.createElement(Field, {
+    label: "Followers"
+  }, /*#__PURE__*/React.createElement(Editable, {
+    value: inf.followers,
+    onChange: v => set("followers", v),
+    placeholder: "e.g. 120K",
+    className: "text-sm"
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Status"
+  }, /*#__PURE__*/React.createElement(StatusSelect, {
+    value: inf.status,
+    onChange: v => set("status", v),
+    options: INF_STATUSES,
+    metaFn: infStatusMeta
+  }))), /*#__PURE__*/React.createElement(Field, {
+    label: "Profile / content link"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1"
+  }, /*#__PURE__*/React.createElement(Editable, {
+    value: inf.link,
+    onChange: v => set("link", v),
+    placeholder: "https://…",
+    className: "text-sm"
+  }), inf.link ? /*#__PURE__*/React.createElement("a", {
+    href: inf.link,
+    target: "_blank",
+    rel: "noreferrer",
+    className: "p-2 rounded-lg text-slate-400 hover:bg-slate-200 hover:text-slate-900",
+    title: "Open"
+  }, /*#__PURE__*/React.createElement(ExternalLink, {
+    size: 15
+  })) : null)), /*#__PURE__*/React.createElement(Field, {
+    label: "Deliverables"
+  }, /*#__PURE__*/React.createElement(Editable, {
+    value: inf.deliverables,
+    onChange: v => set("deliverables", v),
+    placeholder: "e.g. 2 reels + 3 stories",
+    className: "text-sm",
+    multiline: true,
+    rows: 2
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Notes / cost"
+  }, /*#__PURE__*/React.createElement(Editable, {
+    value: inf.notes,
+    onChange: v => set("notes", v),
+    placeholder: "Rate, coordination notes, anything else",
+    className: "text-sm",
+    multiline: true,
+    rows: 2
+  })));
+}
+
+/* ============================================================== */
+/*  Link row                                                      */
+/* ============================================================== */
+function LinkRow({
+  link,
+  onChange,
+  onDelete
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("input", {
+    value: link.label,
+    onChange: e => onChange({
+      ...link,
+      label: e.target.value
+    }),
+    placeholder: "Label (e.g. Brief doc)",
+    className: "w-40 shrink-0 text-sm bg-white rounded-lg px-3 py-2 border border-slate-200 focus:border-slate-900 focus:outline-none"
+  }), /*#__PURE__*/React.createElement("input", {
+    value: link.url,
+    onChange: e => onChange({
+      ...link,
+      url: e.target.value
+    }),
+    placeholder: "https://…",
+    className: "flex-1 min-w-0 text-sm bg-white rounded-lg px-3 py-2 border border-slate-200 focus:border-slate-900 focus:outline-none"
+  }), link.url ? /*#__PURE__*/React.createElement("a", {
+    href: link.url,
+    target: "_blank",
+    rel: "noreferrer",
+    className: "p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-900",
+    title: "Open"
+  }, /*#__PURE__*/React.createElement(ExternalLink, {
+    size: 15
+  })) : null, /*#__PURE__*/React.createElement("button", {
+    onClick: onDelete,
+    className: "p-2 rounded-lg text-slate-300 hover:bg-slate-100 hover:text-slate-900",
+    title: "Remove link"
+  }, /*#__PURE__*/React.createElement(Trash2, {
+    size: 15
+  })));
+}
+
+/* ============================================================== */
+/*  Campaign detail workspace                                     */
+/* ============================================================== */
+function CampaignDetail({
   c,
+  me,
   onField,
+  onSetInfluencers,
+  onSetLinks,
   onAddComment,
   onDelete,
-  me
+  onBack
 }) {
-  const [open, setOpen] = useState(false);
+  if (!c) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "max-w-3xl mx-auto px-4 sm:px-6 py-10 text-center"
+    }, /*#__PURE__*/React.createElement("p", {
+      className: "text-slate-500"
+    }, "This campaign was removed."), /*#__PURE__*/React.createElement("button", {
+      onClick: onBack,
+      className: "mt-3 inline-flex items-center gap-1.5 text-sm text-slate-700 hover:text-slate-900"
+    }, /*#__PURE__*/React.createElement(ArrowLeft, {
+      size: 15
+    }), " Back to tracker"));
+  }
+  const influencers = c.influencers || [];
+  const links = c.links || [];
+  const updInf = (idx, next) => {
+    const a = influencers.slice();
+    a[idx] = next;
+    onSetInfluencers(a);
+  };
+  const addInf = () => onSetInfluencers([...influencers, blankInfluencer()]);
+  const delInf = idx => onSetInfluencers(influencers.filter((_, i) => i !== idx));
+  const updLink = (idx, next) => {
+    const a = links.slice();
+    a[idx] = next;
+    onSetLinks(a);
+  };
+  const addLink = () => onSetLinks([...links, blankLink()]);
+  const delLink = idx => onSetLinks(links.filter((_, i) => i !== idx));
   return /*#__PURE__*/React.createElement("div", {
-    className: "border-t border-slate-100 first:border-t-0"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center gap-3 px-3 py-2 hover:bg-slate-50"
+    className: "max-w-3xl mx-auto px-4 sm:px-6 py-5 space-y-5"
   }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setOpen(o => !o),
-    className: "w-6 shrink-0 flex justify-center text-slate-400 hover:text-slate-800"
-  }, open ? /*#__PURE__*/React.createElement(ChevronDown, {
-    size: 16
-  }) : /*#__PURE__*/React.createElement(ChevronRight, {
-    size: 16
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "flex-1 min-w-0"
-  }, /*#__PURE__*/React.createElement(Editable, {
+    onClick: onBack,
+    className: "inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900"
+  }, /*#__PURE__*/React.createElement(ArrowLeft, {
+    size: 15
+  }), " All campaigns"), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-start justify-between gap-3"
+  }, /*#__PURE__*/React.createElement("input", {
     value: c.name,
-    onChange: v => onField("name", v),
-    className: "truncate font-medium text-slate-800"
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "hidden md:block w-28 shrink-0"
-  }, /*#__PURE__*/React.createElement(Editable, {
-    value: c.owner,
-    onChange: v => onField("owner", v),
-    placeholder: "—",
-    className: "text-sm text-slate-700"
-  })), /*#__PURE__*/React.createElement("input", {
-    type: "date",
-    value: c.dueDate,
-    onChange: e => onField("dueDate", e.target.value),
-    className: "hidden md:block w-32 shrink-0 text-sm text-slate-700 bg-transparent rounded px-2 py-1 border border-transparent hover:border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none"
+    onChange: e => onField("name", e.target.value),
+    className: "flex-1 text-xl sm:text-2xl font-semibold text-slate-900 bg-transparent rounded px-1 py-0.5 border border-transparent hover:border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none"
   }), /*#__PURE__*/React.createElement("div", {
-    className: "w-32 sm:w-36 shrink-0"
+    className: "w-40 shrink-0"
   }, /*#__PURE__*/React.createElement(StatusSelect, {
     value: c.status,
     onChange: v => onField("status", v)
-  }))), open && /*#__PURE__*/React.createElement("div", {
-    className: "pl-9 pr-3 pb-3 space-y-3 bg-slate-50/50"
+  }))), /*#__PURE__*/React.createElement("section", {
+    className: "rounded-xl border border-slate-200 bg-white p-4 space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "grid grid-cols-2 gap-3 md:hidden pt-1"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "text-xs font-medium text-slate-500 mb-1"
-  }, "Owner"), /*#__PURE__*/React.createElement(Editable, {
+    className: "grid gap-4 sm:grid-cols-3"
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Owner / lead"
+  }, /*#__PURE__*/React.createElement(Editable, {
     value: c.owner,
     onChange: v => onField("owner", v),
-    placeholder: "—",
-    className: "text-sm text-slate-700"
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "text-xs font-medium text-slate-500 mb-1"
-  }, "Due"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "Who's driving this",
+    className: "text-sm"
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Due date"
+  }, /*#__PURE__*/React.createElement("input", {
     type: "date",
     value: c.dueDate,
     onChange: e => onField("dueDate", e.target.value),
-    className: "w-full text-sm text-slate-700 bg-white rounded px-2 py-1 border border-slate-200 focus:border-slate-900 focus:outline-none"
-  }))), /*#__PURE__*/React.createElement("div", {
-    className: "grid gap-3 sm:grid-cols-2 pt-1"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "text-xs font-medium text-slate-500 mb-1"
-  }, "Brief link"), /*#__PURE__*/React.createElement("div", {
+    className: "w-full text-sm bg-white rounded-lg px-3 py-2 border border-slate-200 focus:border-slate-900 focus:outline-none"
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Budget"
+  }, /*#__PURE__*/React.createElement(Editable, {
+    value: c.budget,
+    onChange: v => onField("budget", v),
+    placeholder: "e.g. ₹5,00,000",
+    className: "text-sm"
+  }))), /*#__PURE__*/React.createElement(Field, {
+    label: "Brief link"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center gap-1"
   }, /*#__PURE__*/React.createElement(Editable, {
     value: c.briefLink,
     onChange: v => onField("briefLink", v),
     placeholder: "Paste a doc / drive link",
-    className: "text-sm text-slate-700"
+    className: "text-sm"
   }), c.briefLink ? /*#__PURE__*/React.createElement("a", {
     href: c.briefLink,
     target: "_blank",
     rel: "noreferrer",
-    className: "p-1.5 rounded-lg text-slate-400 hover:bg-slate-200 hover:text-slate-900",
-    title: "Open link"
+    className: "p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-900",
+    title: "Open"
   }, /*#__PURE__*/React.createElement(ExternalLink, {
     size: 15
-  })) : null)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "text-xs font-medium text-slate-500 mb-1"
-  }, "Notes"), /*#__PURE__*/React.createElement(Editable, {
+  })) : null)), /*#__PURE__*/React.createElement(Field, {
+    label: "Objective / brief"
+  }, /*#__PURE__*/React.createElement(Editable, {
     value: c.notes,
     onChange: v => onField("notes", v),
-    placeholder: "Scope, key points, status detail…",
+    placeholder: "What this campaign is about, goals, key messaging, timelines…",
+    className: "text-sm",
     multiline: true,
-    className: "text-sm text-slate-700"
-  }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "text-xs font-medium text-slate-500 mb-1"
-  }, "Anything else"), /*#__PURE__*/React.createElement(Editable, {
+    rows: 4
+  }))), /*#__PURE__*/React.createElement("section", {
+    className: "rounded-xl border border-slate-200 bg-white p-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1.5 text-sm font-semibold text-slate-800"
+  }, /*#__PURE__*/React.createElement(Users, {
+    size: 15
+  }), " Influencers ", /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400 font-normal"
+  }, "· ", influencers.length)), /*#__PURE__*/React.createElement("button", {
+    onClick: addInf,
+    className: "inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-700"
+  }, /*#__PURE__*/React.createElement(Plus, {
+    size: 14
+  }), " Add influencer")), influencers.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "text-sm text-slate-400 py-2"
+  }, "No influencers yet. Add names, handles, deliverables, links and status here.") : /*#__PURE__*/React.createElement("div", {
+    className: "space-y-3"
+  }, influencers.map((inf, i) => /*#__PURE__*/React.createElement(InfluencerCard, {
+    key: inf.id,
+    inf: inf,
+    onChange: next => updInf(i, next),
+    onDelete: () => delInf(i)
+  })))), /*#__PURE__*/React.createElement("section", {
+    className: "rounded-xl border border-slate-200 bg-white p-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1.5 text-sm font-semibold text-slate-800"
+  }, /*#__PURE__*/React.createElement(Link2, {
+    size: 15
+  }), " Links & resources ", /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400 font-normal"
+  }, "· ", links.length)), /*#__PURE__*/React.createElement("button", {
+    onClick: addLink,
+    className: "inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-700"
+  }, /*#__PURE__*/React.createElement(Plus, {
+    size: 14
+  }), " Add link")), links.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "text-sm text-slate-400 py-2"
+  }, "No links yet. Add briefs, creatives, drive folders, reports…") : /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2"
+  }, links.map((lk, i) => /*#__PURE__*/React.createElement(LinkRow, {
+    key: lk.id,
+    link: lk,
+    onChange: next => updLink(i, next),
+    onDelete: () => delLink(i)
+  })))), /*#__PURE__*/React.createElement("section", {
+    className: "rounded-xl border border-slate-200 bg-white p-4"
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Anything else"
+  }, /*#__PURE__*/React.createElement(Editable, {
     value: c.extra,
     onChange: v => onField("extra", v),
-    placeholder: "Budgets, deliverables, dependencies, links…",
+    placeholder: "Dependencies, approvals, open questions, misc notes…",
+    className: "text-sm",
     multiline: true,
-    className: "text-sm text-slate-700"
-  })), /*#__PURE__*/React.createElement(CommentThread, {
+    rows: 3
+  }))), /*#__PURE__*/React.createElement("section", {
+    className: "rounded-xl border border-slate-200 bg-white p-4"
+  }, /*#__PURE__*/React.createElement(CommentThread, {
     comments: c.comments || [],
     onAdd: onAddComment,
     me: me
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "flex justify-end"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-end pt-1"
   }, /*#__PURE__*/React.createElement("button", {
-    onClick: onDelete,
-    className: "flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-900"
+    onClick: () => {
+      if (window.confirm('Delete "' + c.name + '"?')) {
+        onDelete();
+        onBack();
+      }
+    },
+    className: "inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-900"
   }, /*#__PURE__*/React.createElement(Trash2, {
-    size: 13
-  }), " Delete campaign"))));
+    size: 14
+  }), " Delete campaign")));
+}
+
+/* ============================================================== */
+/*  Campaign list row (click to open)                             */
+/* ============================================================== */
+function CampaignListRow({
+  c,
+  onOpen,
+  onField
+}) {
+  const infN = (c.influencers || []).length;
+  const linkN = (c.links || []).length;
+  const comN = (c.comments || []).length;
+  const meta = [];
+  if (c.owner) meta.push(c.owner);
+  if (c.dueDate) meta.push("Due " + c.dueDate);
+  if (infN) meta.push(infN + " influencer" + (infN > 1 ? "s" : ""));
+  if (linkN) meta.push(linkN + " link" + (linkN > 1 ? "s" : ""));
+  if (comN) meta.push(comN + " comment" + (comN > 1 ? "s" : ""));
+  return /*#__PURE__*/React.createElement("div", {
+    onClick: onOpen,
+    className: "flex items-center gap-3 px-3 py-2.5 border-t border-slate-100 first:border-t-0 hover:bg-slate-50 cursor-pointer"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "font-medium text-slate-800 truncate"
+  }, c.name || "Untitled campaign"), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs text-slate-400 truncate"
+  }, meta.length ? meta.join("  ·  ") : "No details yet — click to open")), /*#__PURE__*/React.createElement("div", {
+    className: "w-32 sm:w-36 shrink-0",
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement(StatusSelect, {
+    value: c.status,
+    onChange: v => onField("status", v)
+  })), /*#__PURE__*/React.createElement(ChevronRight, {
+    size: 16,
+    className: "text-slate-300 shrink-0"
+  }));
 }
 
 /* ============================================================== */
@@ -608,10 +949,8 @@ function Workstream({
   onField,
   onRename,
   onAddCampaign,
-  onAddComment,
-  onDeleteCampaign,
-  onDeleteWs,
-  me
+  onOpenCampaign,
+  onDeleteWs
 }) {
   const [open, setOpen] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -642,10 +981,10 @@ function Workstream({
     className: "w-6 h-6 shrink-0 flex items-center justify-center rounded bg-slate-900 text-white text-xs font-semibold"
   }, index + 1), /*#__PURE__*/React.createElement("div", {
     className: "flex-1 min-w-0"
-  }, /*#__PURE__*/React.createElement(Editable, {
+  }, /*#__PURE__*/React.createElement("input", {
     value: ws.name,
-    onChange: onRename,
-    className: "font-semibold text-slate-900"
+    onChange: e => onRename(e.target.value),
+    className: "w-full font-semibold text-slate-900 bg-transparent rounded px-1 py-0.5 border border-transparent hover:border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none"
   })), /*#__PURE__*/React.createElement("div", {
     className: "hidden sm:flex items-center gap-1"
   }, STATUSES.filter(s => counts[s.id]).map(s => /*#__PURE__*/React.createElement("span", {
@@ -661,25 +1000,11 @@ function Workstream({
     title: "Delete workstream"
   }, /*#__PURE__*/React.createElement(Trash2, {
     size: 14
-  }))), open && /*#__PURE__*/React.createElement("div", null, ws.campaigns.length > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center gap-3 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-slate-400 border-b border-slate-100 bg-slate-50/60"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "w-6 shrink-0"
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "flex-1"
-  }, "Campaign"), /*#__PURE__*/React.createElement("span", {
-    className: "hidden md:block w-28 shrink-0"
-  }, "Owner"), /*#__PURE__*/React.createElement("span", {
-    className: "hidden md:block w-32 shrink-0"
-  }, "Due"), /*#__PURE__*/React.createElement("span", {
-    className: "w-32 sm:w-36 shrink-0"
-  }, "Status")), ws.campaigns.map(c => /*#__PURE__*/React.createElement(CampaignRow, {
+  }))), open && /*#__PURE__*/React.createElement("div", null, ws.campaigns.map(c => /*#__PURE__*/React.createElement(CampaignListRow, {
     key: c.id,
     c: c,
-    me: me,
-    onField: (f, v) => onField(c.id, f, v),
-    onAddComment: t => onAddComment(c.id, t),
-    onDelete: () => onDeleteCampaign(c.id)
+    onOpen: () => onOpenCampaign(c.id),
+    onField: (f, v) => onField(c.id, f, v)
   })), /*#__PURE__*/React.createElement("div", {
     className: "px-3 py-2 border-t border-slate-100"
   }, adding ? /*#__PURE__*/React.createElement("div", {
@@ -758,8 +1083,8 @@ function App() {
   const [me, setMe] = useState(null);
   const [needName, setNeedName] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [syncedAt, setSyncedAt] = useState(null);
   const [lastEdit, setLastEdit] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
   const meRef = useRef(null);
   const docRef = useRef(null);
   docRef.current = doc;
@@ -852,7 +1177,6 @@ function App() {
       await sSet(campKey(campId), merged);
       await bumpPulse();
       patchCampaign(campId, merged);
-      setSyncedAt(Date.now());
     } finally {
       setSyncing(false);
       flushing.current[campId] = false;
@@ -871,7 +1195,6 @@ function App() {
       next.updatedBy = whoami();
       await sSet(IDX_KEY, next);
       await bumpPulse();
-      setSyncedAt(Date.now());
     } finally {
       setSyncing(false);
       indexLock.current = false;
@@ -927,16 +1250,20 @@ function App() {
       return idx;
     });
   };
-  const deleteCampaign = async (wsId, campId) => {
+  const deleteCampaign = async campId => {
+    let wsId = null;
+    (docRef.current ? docRef.current.workstreams : []).forEach(w => {
+      if (w.campaigns.some(c => c.id === campId)) wsId = w.id;
+    });
     setDoc(prev => prev && {
       ...prev,
-      workstreams: prev.workstreams.map(w => w.id === wsId ? {
+      workstreams: prev.workstreams.map(w => ({
         ...w,
         campaigns: w.campaigns.filter(c => c.id !== campId)
-      } : w)
+      }))
     });
     delete pending.current[campId];
-    await withIndex(idx => {
+    if (wsId) await withIndex(idx => {
       const w = idx.workstreams.find(w => w.id === wsId);
       if (w) w.campaignIds = w.campaignIds.filter(id => id !== campId);
       return idx;
@@ -999,7 +1326,6 @@ function App() {
   const pullRemote = async () => {
     const a = await assemble();
     setDoc(overlayPending(a));
-    setSyncedAt(Date.now());
   };
   useEffect(() => {
     (async () => {
@@ -1050,6 +1376,7 @@ function App() {
   all.forEach(c => {
     totals[c.status] = (totals[c.status] || 0) + 1;
   });
+  const selected = selectedId ? all.find(c => c.id === selectedId) : null;
   return /*#__PURE__*/React.createElement("div", {
     className: "min-h-screen bg-slate-100 text-slate-800"
   }, needName && /*#__PURE__*/React.createElement(IdentityModal, {
@@ -1085,7 +1412,7 @@ function App() {
     className: "font-medium hidden sm:inline"
   }, me.name), /*#__PURE__*/React.createElement(TeamTag, {
     team: me.team
-  }))), /*#__PURE__*/React.createElement("div", {
+  }))), !selected && /*#__PURE__*/React.createElement("div", {
     className: "flex flex-wrap items-center gap-1.5 mt-4"
   }, STATUSES.map(s => /*#__PURE__*/React.createElement("span", {
     key: s.id,
@@ -1100,7 +1427,7 @@ function App() {
     className: "bg-amber-50 border-b border-amber-200 text-amber-800 text-xs"
   }, /*#__PURE__*/React.createElement("div", {
     className: "max-w-5xl mx-auto px-4 sm:px-6 py-2"
-  }, "Local preview mode — data is saved only in this browser. Add your Supabase URL and key at the top of index.html to turn on shared saving for both teams.")), /*#__PURE__*/React.createElement("div", {
+  }, "Local preview mode — data is saved only in this browser. Add your Supabase URL and key at the top of index.html to turn on shared saving.")), /*#__PURE__*/React.createElement("div", {
     className: "sticky top-0 z-30 bg-slate-100/90 backdrop-blur border-b border-slate-200"
   }, /*#__PURE__*/React.createElement("div", {
     className: "max-w-5xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3"
@@ -1122,21 +1449,28 @@ function App() {
     className: "inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 shrink-0"
   }, /*#__PURE__*/React.createElement(RefreshCw, {
     size: 14
-  }), " Refresh"))), /*#__PURE__*/React.createElement("main", {
+  }), " Refresh"))), selected ? /*#__PURE__*/React.createElement(CampaignDetail, {
+    c: selected,
+    me: me || {
+      name: "",
+      team: ""
+    },
+    onField: (field, value) => editCampaign(selected.id, field, value),
+    onSetInfluencers: arr => editCampaign(selected.id, "influencers", arr),
+    onSetLinks: arr => editCampaign(selected.id, "links", arr),
+    onAddComment: text => addComment(selected.id, text),
+    onDelete: () => deleteCampaign(selected.id),
+    onBack: () => setSelectedId(null)
+  }) : /*#__PURE__*/React.createElement("main", {
     className: "max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-3"
   }, doc.workstreams.map((ws, i) => /*#__PURE__*/React.createElement(Workstream, {
     key: ws.id,
     ws: ws,
     index: i,
-    me: me || {
-      name: "",
-      team: ""
-    },
     onRename: name => renameWorkstream(ws.id, name),
     onField: (cid, field, value) => editCampaign(cid, field, value),
     onAddCampaign: name => addCampaign(ws.id, name),
-    onAddComment: (cid, text) => addComment(cid, text),
-    onDeleteCampaign: cid => deleteCampaign(ws.id, cid),
+    onOpenCampaign: cid => setSelectedId(cid),
     onDeleteWs: () => {
       if (window.confirm('Delete the "' + ws.name + '" workstream and all its campaigns?')) deleteWorkstream(ws.id);
     }
@@ -1149,7 +1483,7 @@ function App() {
     className: "text-center text-xs text-slate-400 pt-2 flex items-center justify-center gap-1.5"
   }, /*#__PURE__*/React.createElement(Users, {
     size: 12
-  }), " Built for both teams — everyone with the link edits the same live tracker; changes save on their own and sync automatically.")));
+  }), " Click any campaign to open its full workspace. Everyone with the link edits the same live tracker.")));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
   </script>
