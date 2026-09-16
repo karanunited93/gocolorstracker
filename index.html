@@ -18,8 +18,8 @@
 /* ============================================================== */
 /*  CONFIG — paste your Supabase values here (see README)         */
 /* ============================================================== */
-const SUPABASE_URL = "YOUR-PROJECT-URL";       // e.g. https://abcd1234.supabase.co
-const SUPABASE_ANON_KEY = "YOUR-ANON-KEY";     // the "anon public" key
+const SUPABASE_URL = "https://zzbykakjodudsemnppte.supabase.co"
+const SUPABASE_ANON_KEY = sb_publishable__2RXB0Ox7oTEZg6UWvq-dA_ktS9XdC5
 
 const CONFIGURED = !/YOUR-/.test(SUPABASE_URL) && !/YOUR-/.test(SUPABASE_ANON_KEY);
 const db = CONFIGURED ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
