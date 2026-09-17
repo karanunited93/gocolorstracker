@@ -17,8 +17,8 @@
   <!--  EDIT ONLY THESE TWO LINES: paste your Supabase URL and key   -->
   <!-- ============================================================= -->
   <script>
-    window.SUPABASE_URL      = "https://zzbykakjodudsemnppte.supabase.co";  
-    window.SUPABASE_ANON_KEY = "sb_publishable__2RXB0Ox7oTEZg6UWvq-dA_ktS9XdC5";
+    window.SUPABASE_URL      = "YOUR-PROJECT-URL";   // e.g. https://abcd1234.supabase.co
+    window.SUPABASE_ANON_KEY = "YOUR-ANON-KEY";      // your publishable / anon key
   </script>
 
   <!-- App (pre-compiled, no in-browser build step) -->
@@ -1076,6 +1076,161 @@ function IdentityModal({
 }
 
 /* ============================================================== */
+/*  Board (ClickUp-style)                                          */
+/* ============================================================== */
+function ProjectChips({
+  workstreams,
+  projectId,
+  setProjectId,
+  onAddProject
+}) {
+  const chip = active => "px-3 py-1.5 rounded-lg text-sm whitespace-nowrap border " + (active ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300");
+  return /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2 overflow-x-auto pb-1 -mb-1"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setProjectId("all"),
+    className: chip(projectId === "all")
+  }, "All projects"), workstreams.map(w => /*#__PURE__*/React.createElement("button", {
+    key: w.id,
+    onClick: () => setProjectId(w.id),
+    className: chip(projectId === w.id)
+  }, w.name || "Untitled", /*#__PURE__*/React.createElement("span", {
+    className: "ml-1.5 opacity-60"
+  }, w.campaigns.length))), /*#__PURE__*/React.createElement("button", {
+    onClick: onAddProject,
+    className: "px-3 py-1.5 rounded-lg text-sm whitespace-nowrap border border-dashed border-slate-300 text-slate-400 hover:text-slate-900 hover:border-slate-900 inline-flex items-center gap-1"
+  }, /*#__PURE__*/React.createElement(Plus, {
+    size: 13
+  }), " Project"));
+}
+function ViewToggle({
+  view,
+  setView
+}) {
+  const btn = (v, label) => /*#__PURE__*/React.createElement("button", {
+    onClick: () => setView(v),
+    className: "px-3 py-1.5 text-sm rounded-md " + (view === v ? "bg-white shadow-sm text-slate-900 font-medium" : "text-slate-500 hover:text-slate-800")
+  }, label);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "inline-flex items-center gap-1 bg-slate-200/70 rounded-lg p-0.5 shrink-0"
+  }, btn("board", "Board"), btn("list", "List"));
+}
+function BoardCard({
+  c,
+  wsName,
+  showProject,
+  onOpen,
+  setDragId
+}) {
+  const infN = (c.influencers || []).length,
+    linkN = (c.links || []).length,
+    comN = (c.comments || []).length;
+  const today = new Date().toISOString().slice(0, 10);
+  const overdue = c.dueDate && c.status !== "done" && c.status !== "live" && c.dueDate < today;
+  return /*#__PURE__*/React.createElement("div", {
+    draggable: true,
+    onDragStart: e => {
+      e.dataTransfer.setData("text/plain", c.id);
+      e.dataTransfer.effectAllowed = "move";
+      setDragId(c.id);
+    },
+    onDragEnd: () => setDragId(null),
+    onClick: onOpen,
+    className: "bg-white rounded-lg border border-slate-200 p-3 cursor-pointer hover:border-slate-300 hover:shadow-sm transition-shadow"
+  }, showProject && /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] font-medium text-slate-400 uppercase tracking-wide mb-1 truncate"
+  }, wsName), /*#__PURE__*/React.createElement("div", {
+    className: "text-sm font-medium text-slate-800 mb-2 leading-snug"
+  }, c.name || "Untitled campaign"), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center flex-wrap gap-x-3 gap-y-1 text-xs text-slate-400"
+  }, c.owner ? /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-500 truncate max-w-[8rem]"
+  }, c.owner) : null, c.dueDate ? /*#__PURE__*/React.createElement("span", {
+    className: overdue ? "text-rose-600 font-medium" : ""
+  }, c.dueDate) : null, infN > 0 ? /*#__PURE__*/React.createElement("span", {
+    className: "inline-flex items-center gap-1"
+  }, /*#__PURE__*/React.createElement(Users, {
+    size: 12
+  }), infN) : null, linkN > 0 ? /*#__PURE__*/React.createElement("span", {
+    className: "inline-flex items-center gap-1"
+  }, /*#__PURE__*/React.createElement(Link2, {
+    size: 12
+  }), linkN) : null, comN > 0 ? /*#__PURE__*/React.createElement("span", {
+    className: "inline-flex items-center gap-1"
+  }, /*#__PURE__*/React.createElement(MessageSquare, {
+    size: 12
+  }), comN) : null));
+}
+function BoardView({
+  workstreams,
+  projectId,
+  onOpen,
+  onChangeStatus,
+  onAddCampaign
+}) {
+  const [dragId, setDragId] = useState(null);
+  const [overCol, setOverCol] = useState(null);
+  const visible = projectId === "all" ? workstreams : workstreams.filter(w => w.id === projectId);
+  const cards = visible.flatMap(w => w.campaigns.map(c => ({
+    c,
+    wsName: w.name
+  })));
+  const showProject = projectId === "all";
+  const byStatus = {};
+  STATUSES.forEach(s => {
+    byStatus[s.id] = [];
+  });
+  cards.forEach(x => {
+    (byStatus[x.c.status] || byStatus.not_started).push(x);
+  });
+  return /*#__PURE__*/React.createElement("div", {
+    className: "overflow-x-auto pb-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-3 items-start min-w-max"
+  }, STATUSES.map(s => /*#__PURE__*/React.createElement("div", {
+    key: s.id,
+    onDragOver: e => {
+      e.preventDefault();
+      setOverCol(s.id);
+    },
+    onDragLeave: () => setOverCol(o => o === s.id ? null : o),
+    onDrop: e => {
+      e.preventDefault();
+      const id = e.dataTransfer.getData("text/plain");
+      if (id) onChangeStatus(id, s.id);
+      setOverCol(null);
+      setDragId(null);
+    },
+    className: "w-72 shrink-0 rounded-xl border p-2 " + (overCol === s.id ? "border-slate-900 bg-slate-100" : "border-slate-200 bg-slate-100/50")
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2 px-1 py-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "w-2 h-2 rounded-full " + s.dot
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-sm font-semibold text-slate-700"
+  }, s.label), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs text-slate-400"
+  }, byStatus[s.id].length)), /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2 min-h-[8px]"
+  }, byStatus[s.id].map(({
+    c,
+    wsName
+  }) => /*#__PURE__*/React.createElement(BoardCard, {
+    key: c.id,
+    c: c,
+    wsName: wsName,
+    showProject: showProject,
+    onOpen: () => onOpen(c.id),
+    setDragId: setDragId
+  }))), projectId !== "all" && /*#__PURE__*/React.createElement("button", {
+    onClick: () => onAddCampaign(projectId, s.id),
+    className: "mt-2 w-full flex items-center justify-center gap-1.5 text-xs text-slate-400 hover:text-slate-900 py-1.5 rounded-lg hover:bg-white"
+  }, /*#__PURE__*/React.createElement(Plus, {
+    size: 13
+  }), " Add")))));
+}
+
+/* ============================================================== */
 /*  App                                                           */
 /* ============================================================== */
 function App() {
@@ -1085,6 +1240,8 @@ function App() {
   const [syncing, setSyncing] = useState(false);
   const [lastEdit, setLastEdit] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
+  const [view, setView] = useState("board");
+  const [projectId, setProjectId] = useState("all");
   const meRef = useRef(null);
   const docRef = useRef(null);
   docRef.current = doc;
@@ -1290,6 +1447,25 @@ function App() {
       });
       return idx;
     });
+    setProjectId(ws.id);
+  };
+  const boardAdd = async (wsId, status) => {
+    const camp = blankCampaign("New campaign", whoami());
+    camp.status = status || "not_started";
+    setDoc(prev => prev && {
+      ...prev,
+      workstreams: prev.workstreams.map(w => w.id === wsId ? {
+        ...w,
+        campaigns: [...w.campaigns, camp]
+      } : w)
+    });
+    await sSet(campKey(camp.id), camp);
+    await withIndex(idx => {
+      const w = idx.workstreams.find(w => w.id === wsId);
+      if (w) w.campaignIds = [...w.campaignIds, camp.id];
+      return idx;
+    });
+    setSelectedId(camp.id);
   };
   const deleteWorkstream = async wsId => {
     const w = docRef.current && docRef.current.workstreams.find(w => w.id === wsId);
@@ -1377,6 +1553,8 @@ function App() {
     totals[c.status] = (totals[c.status] || 0) + 1;
   });
   const selected = selectedId ? all.find(c => c.id === selectedId) : null;
+  const validProject = projectId === "all" || doc.workstreams.some(w => w.id === projectId) ? projectId : "all";
+  const listWs = validProject === "all" ? doc.workstreams : doc.workstreams.filter(w => w.id === validProject);
   return /*#__PURE__*/React.createElement("div", {
     className: "min-h-screen bg-slate-100 text-slate-800"
   }, needName && /*#__PURE__*/React.createElement(IdentityModal, {
@@ -1385,7 +1563,7 @@ function App() {
   }), /*#__PURE__*/React.createElement("header", {
     className: "bg-slate-900 text-white"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "max-w-5xl mx-auto px-4 sm:px-6 py-4"
+    className: "max-w-6xl mx-auto px-4 sm:px-6 py-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between gap-4"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1426,11 +1604,11 @@ function App() {
   }, totals[s.id] || 0)))))), !REMOTE && /*#__PURE__*/React.createElement("div", {
     className: "bg-amber-50 border-b border-amber-200 text-amber-800 text-xs"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "max-w-5xl mx-auto px-4 sm:px-6 py-2"
+    className: "max-w-6xl mx-auto px-4 sm:px-6 py-2"
   }, "Local preview mode — data is saved only in this browser. Add your Supabase URL and key at the top of index.html to turn on shared saving.")), /*#__PURE__*/React.createElement("div", {
     className: "sticky top-0 z-30 bg-slate-100/90 backdrop-blur border-b border-slate-200"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "max-w-5xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3"
+    className: "max-w-6xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-xs text-slate-500 truncate flex items-center gap-1.5"
   }, syncing ? /*#__PURE__*/React.createElement("span", {
@@ -1462,28 +1640,45 @@ function App() {
     onDelete: () => deleteCampaign(selected.id),
     onBack: () => setSelectedId(null)
   }) : /*#__PURE__*/React.createElement("main", {
-    className: "max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-3"
-  }, doc.workstreams.map((ws, i) => /*#__PURE__*/React.createElement(Workstream, {
-    key: ws.id,
-    ws: ws,
-    index: i,
-    onRename: name => renameWorkstream(ws.id, name),
-    onField: (cid, field, value) => editCampaign(cid, field, value),
-    onAddCampaign: name => addCampaign(ws.id, name),
-    onOpenCampaign: cid => setSelectedId(cid),
-    onDeleteWs: () => {
-      if (window.confirm('Delete the "' + ws.name + '" workstream and all its campaigns?')) deleteWorkstream(ws.id);
-    }
-  })), /*#__PURE__*/React.createElement("button", {
+    className: "max-w-6xl mx-auto px-4 sm:px-6 py-5 space-y-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between gap-3 flex-wrap"
+  }, /*#__PURE__*/React.createElement(ProjectChips, {
+    workstreams: doc.workstreams,
+    projectId: validProject,
+    setProjectId: setProjectId,
+    onAddProject: addWorkstream
+  }), /*#__PURE__*/React.createElement(ViewToggle, {
+    view: view,
+    setView: setView
+  })), view === "board" ? /*#__PURE__*/React.createElement(BoardView, {
+    workstreams: doc.workstreams,
+    projectId: validProject,
+    onOpen: id => setSelectedId(id),
+    onChangeStatus: (id, st) => editCampaign(id, "status", st),
+    onAddCampaign: boardAdd
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "space-y-3"
+  }, listWs.map(ws => {
+    const i = doc.workstreams.indexOf(ws);
+    return /*#__PURE__*/React.createElement(Workstream, {
+      key: ws.id,
+      ws: ws,
+      index: i,
+      onRename: name => renameWorkstream(ws.id, name),
+      onField: (cid, field, value) => editCampaign(cid, field, value),
+      onAddCampaign: name => addCampaign(ws.id, name),
+      onOpenCampaign: cid => setSelectedId(cid),
+      onDeleteWs: () => {
+        if (window.confirm('Delete the "' + ws.name + '" workstream and all its campaigns?')) deleteWorkstream(ws.id);
+      }
+    });
+  }), /*#__PURE__*/React.createElement("button", {
     onClick: addWorkstream,
     className: "flex items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm text-slate-500 hover:border-slate-900 hover:text-slate-900 w-full justify-center"
   }, /*#__PURE__*/React.createElement(Plus, {
     size: 16
-  }), " Add workstream"), /*#__PURE__*/React.createElement("p", {
-    className: "text-center text-xs text-slate-400 pt-2 flex items-center justify-center gap-1.5"
-  }, /*#__PURE__*/React.createElement(Users, {
-    size: 12
-  }), " Click any campaign to open its full workspace. Everyone with the link edits the same live tracker.")));
+  }), " Add project"))));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
   </script>
